@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node ./copy-post-assets.js",
+    "build": "next build",
     "start": "next start"
   },
   "dependencies": {
