@@ -14,7 +14,7 @@ const sendMessage = async (message: string) => {
   const url = `${baseUrl}/sendMessage`;
   const response = await fetch(url, {
     body: JSON.stringify({
-      chat_id: chatId,
+      chat_id: Number(chatId),
       text: message,
     }),
     method: "POST",
