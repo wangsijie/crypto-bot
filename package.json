@@ -1,0 +1,26 @@
+{
+  "name": "crypto-bot",
+  "version": "1.0.0",
+  "repository": "git@github.com:wangsijie/crypto-bot.git",
+  "author": "wangsijie <sijiewg@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node ./copy-post-assets.js",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^13.4.19",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.6.2",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "eslint": "^8.49.0",
+    "eslint-config-next": "^13.4.19",
+    "typescript": "^5.2.2",
+    "vercel": "^32.4.1"
+  }
+}
