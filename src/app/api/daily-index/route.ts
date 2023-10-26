@@ -1,13 +1,31 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from 'next/server';
 
 const botToken = process.env.BOT_TOKEN;
 const baseUrl = `https://api.telegram.org/bot${botToken}`;
 const chatId = process.env.CHAT_ID;
 const cmcApiKey = process.env.CMC_API_KEY;
 
+type CryptoStats = {
+  price: number;
+  volume_24h: number;
+  percent_change_1h: number;
+  percent_change_24h: number;
+  market_cap: number;
+};
+
+const stringifyCryptoStats = (stats: CryptoStats): string[] => {
+  const { price, volume_24h, percent_change_1h, percent_change_24h, market_cap } = stats;
+  return [
+    `价格: ${price.toFixed(2)} USD`,
+    `1 小时涨跌幅: ${percent_change_1h.toFixed(2)}%`,
+    `24 小时涨跌幅: ${percent_change_24h.toFixed(2)}%`,
+    `24 小时换手率: ${(volume_24h / market_cap).toFixed(2)}%`,
+  ];
+};
+
 const sendMessage = async (message: string) => {
   if (!chatId) {
-    console.log("No chat id, skip sending message", message);
+    console.log('No chat id, skip sending message', message);
     return;
   }
 
@@ -17,57 +35,84 @@ const sendMessage = async (message: string) => {
       chat_id: Number(chatId),
       text: message,
     }),
-    method: "POST",
+    method: 'POST',
     headers: {
-      "content-type": "application/json;charset=UTF-8",
+      'content-type': 'application/json;charset=UTF-8',
     },
-    cache: "no-store",
+    cache: 'no-store',
   });
 
   if (!response.ok) {
-    throw new Error("Failed to send message");
+    throw new Error('Failed to send message');
   }
 };
 
-const getDominance = async (): Promise<number> => {
+const getDominance = async (): Promise<{ btc: number; eth: number }> => {
   if (!cmcApiKey) {
-    throw new Error("No CMC API key");
+    throw new Error('No CMC API key');
   }
 
   const response = await fetch(
-    "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest",
+    'https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest',
     {
       headers: {
-        "X-CMC_PRO_API_KEY": cmcApiKey,
+        'X-CMC_PRO_API_KEY': cmcApiKey,
       },
     }
   );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch coinmarketcap.com");
+    throw new Error('Failed to fetch coinmarketcap.com');
   }
 
   const json = await response.json();
 
-  const dominance = json.data.btc_dominance;
+  const { btc_dominance } = json.data;
+  const { eth_dominance } = json.data;
 
-  return dominance;
+  return { btc: btc_dominance, eth: eth_dominance };
+};
+
+const getLatestStats = async (): Promise<{ btc: CryptoStats; eth: CryptoStats }> => {
+  if (!cmcApiKey) {
+    throw new Error('No CMC API key');
+  }
+
+  const response = await fetch(
+    'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
+    {
+      headers: {
+        'X-CMC_PRO_API_KEY': cmcApiKey,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch coinmarketcap.com');
+  }
+
+  const json = await response.json();
+
+  const btc = json.data.find(({ id }) => id === 1).quote.USD; // BTC coinMarketCap id 1
+  const eth = json.data.find(({ id }) => id === 1027).quote.USD; // ETH coinMarketCap id 1027
+
+  return { btc, eth };
 };
 
 const getFearIndex = async (): Promise<number> => {
-  const response = await fetch("https://coinmarketcap.com/", {
-    cache: "no-store",
+  const response = await fetch('https://coinmarketcap.com/', {
+    cache: 'no-store',
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch coinmarketcap.com");
+    throw new Error('Failed to fetch coinmarketcap.com');
   }
 
   const html = await response.text();
-  const match = html.match(/"score":([^,]+)/);
+  const match = /"score":([^,]+)/.exec(html);
 
   if (!match || !match[1]) {
-    throw new Error("Failed to parse coinmarketcap.com");
+    throw new Error('Failed to parse coinmarketcap.com');
   }
 
   const score = Number(match[1]);
@@ -76,11 +121,8 @@ const getFearIndex = async (): Promise<number> => {
 };
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (
-    process.env.NODE_ENV === "production" &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+  const authHeader = request.headers.get('authorization');
+  if (process.env.NODE_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json(
       { success: false },
       {
@@ -91,20 +133,21 @@ export async function GET(request: NextRequest) {
 
   try {
     const score = await getFearIndex();
-    const dominance = await getDominance();
+    const { btc, eth } = await getDominance();
+    const { btc: btcStats, eth: ethStats } = await getLatestStats();
 
     await sendMessage(
-      `恐慌贪婪指数: ${Math.floor(score)}，BTC占比: ${Math.floor(dominance)}%`
+      [
+        `贪婪指数: ${Math.floor(score)}`,
+        `BTC 占比: ${btc.toFixed(2)}%`,
+        ...stringifyCryptoStats(btcStats),
+        `ETH 占比: ${eth.toFixed(2)}%`,
+        ...stringifyCryptoStats(ethStats),
+      ].join('\n')
     );
 
-    return NextResponse.json(
-      { score },
-      { headers: { "cache-control": "no-store, max-age=0" } }
-    );
+    return NextResponse.json({ score }, { headers: { 'cache-control': 'no-store, max-age=0' } });
   } catch (error) {
-    return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
