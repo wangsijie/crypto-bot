@@ -73,7 +73,18 @@ const getDominance = async (): Promise<{ btc: number; eth: number }> => {
   return { btc: btc_dominance, eth: eth_dominance };
 };
 
-const getLatestStats = async (): Promise<{ btc: CryptoStats; eth: CryptoStats }> => {
+const getLatestStats = async (): Promise<{ btc?: CryptoStats; eth?: CryptoStats }> => {
+  type DataPayload = {
+    id: number;
+    quote: {
+      USD: CryptoStats;
+    };
+  };
+
+  type ResponseType = {
+    data: DataPayload[];
+  };
+
   if (!cmcApiKey) {
     throw new Error('No CMC API key');
   }
@@ -91,12 +102,16 @@ const getLatestStats = async (): Promise<{ btc: CryptoStats; eth: CryptoStats }>
     throw new Error('Failed to fetch coinmarketcap.com');
   }
 
-  const json = await response.json();
+  const json = (await response.json()) as ResponseType;
 
-  const btc = json.data.find(({ id }) => id === 1).quote.USD; // BTC coinMarketCap id 1
-  const eth = json.data.find(({ id }) => id === 1027).quote.USD; // ETH coinMarketCap id 1027
+  if (!json || !json.data) {
+    throw new Error('Failed to latest stats');
+  }
 
-  return { btc, eth };
+  const btcPayload = json.data.find(({ id }) => id === 1); // BTC coinMarketCap id 1
+  const ethPayload = json.data.find(({ id }) => id === 1027); // ETH coinMarketCap id 1027
+
+  return { btc: btcPayload?.quote.USD, eth: ethPayload?.quote.USD };
 };
 
 const getFearIndex = async (): Promise<number> => {
@@ -140,9 +155,9 @@ export async function GET(request: NextRequest) {
       [
         `贪婪指数: ${Math.floor(score)}`,
         `BTC 占比: ${btc.toFixed(2)}%`,
-        ...stringifyCryptoStats(btcStats),
+        ...(btcStats ? stringifyCryptoStats(btcStats) : []),
         `ETH 占比: ${eth.toFixed(2)}%`,
-        ...stringifyCryptoStats(ethStats),
+        ...(ethStats ? stringifyCryptoStats(ethStats) : []),
       ].join('\n')
     );
 
