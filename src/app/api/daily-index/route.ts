@@ -13,6 +13,21 @@ type CryptoStats = {
   market_cap: number;
 };
 
+const formatNumberWithCommas = (num: number): string =>
+  num.toFixed(2).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+const prettifyBigNumber = (num: number): string => {
+  const million = 1_000_000;
+  const billion = 1_000_000_000;
+  if (num < million) {
+    return formatNumberWithCommas(num);
+  }
+  if (million <= num && num < billion) {
+    return `${formatNumberWithCommas(num / million)} m`;
+  }
+  return `${formatNumberWithCommas(num / billion)} b`;
+};
+
 const stringifyCryptoStats = (stats: CryptoStats & { total_volume_24h?: number }): string[] => {
   const { price, volume_24h, percent_change_1h, percent_change_24h, market_cap, total_volume_24h } =
     stats;
@@ -21,7 +36,7 @@ const stringifyCryptoStats = (stats: CryptoStats & { total_volume_24h?: number }
     `1 小时涨跌幅: ${percent_change_1h.toFixed(2)}%`,
     `24 小时涨跌幅: ${percent_change_24h.toFixed(2)}%`,
     `24 小时换手率: ${((100 * volume_24h) / market_cap).toFixed(2)}%`,
-    `24 小时成交量: ${volume_24h.toFixed(2)}%`,
+    `24 小时成交量: ${prettifyBigNumber(volume_24h)}`,
     ...(total_volume_24h
       ? [`24 小时成交量占比: ${((100 * volume_24h) / total_volume_24h).toFixed(2)}%`]
       : []),
