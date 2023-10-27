@@ -13,13 +13,18 @@ type CryptoStats = {
   market_cap: number;
 };
 
-const stringifyCryptoStats = (stats: CryptoStats): string[] => {
-  const { price, volume_24h, percent_change_1h, percent_change_24h, market_cap } = stats;
+const stringifyCryptoStats = (stats: CryptoStats & { total_volume_24h?: number }): string[] => {
+  const { price, volume_24h, percent_change_1h, percent_change_24h, market_cap, total_volume_24h } =
+    stats;
   return [
     `价格: ${price.toFixed(2)} USD`,
     `1 小时涨跌幅: ${percent_change_1h.toFixed(2)}%`,
     `24 小时涨跌幅: ${percent_change_24h.toFixed(2)}%`,
-    `24 小时换手率: ${(volume_24h / market_cap).toFixed(2)}%`,
+    `24 小时换手率: ${((100 * volume_24h) / market_cap).toFixed(2)}%`,
+    `24 小时成交量: ${volume_24h.toFixed(2)}%`,
+    ...(total_volume_24h
+      ? [`24 小时成交量占比: ${((100 * volume_24h) / total_volume_24h).toFixed(2)}%`]
+      : []),
   ];
 };
 
@@ -47,7 +52,23 @@ const sendMessage = async (message: string) => {
   }
 };
 
-const getDominance = async (): Promise<{ btc: number; eth: number }> => {
+const getGlobalMetrics = async (): Promise<{
+  btc: number;
+  eth: number;
+  total_volume_24h: number;
+}> => {
+  type ResponseType = {
+    data: {
+      btc_dominance: number;
+      eth_dominance: number;
+      quote: {
+        USD: {
+          total_volume_24h: number;
+        };
+      };
+    };
+  };
+
   if (!cmcApiKey) {
     throw new Error('No CMC API key');
   }
@@ -65,12 +86,17 @@ const getDominance = async (): Promise<{ btc: number; eth: number }> => {
     throw new Error('Failed to fetch coinmarketcap.com');
   }
 
-  const json = await response.json();
+  const json = (await response.json()) as ResponseType;
 
-  const { btc_dominance } = json.data;
-  const { eth_dominance } = json.data;
+  const {
+    btc_dominance,
+    eth_dominance,
+    quote: {
+      USD: { total_volume_24h },
+    },
+  } = json.data;
 
-  return { btc: btc_dominance, eth: eth_dominance };
+  return { btc: btc_dominance, eth: eth_dominance, total_volume_24h };
 };
 
 const getLatestStats = async (): Promise<{ btc?: CryptoStats; eth?: CryptoStats }> => {
@@ -148,16 +174,18 @@ export async function GET(request: NextRequest) {
 
   try {
     const score = await getFearIndex();
-    const { btc, eth } = await getDominance();
+    const { btc, eth, total_volume_24h } = await getGlobalMetrics();
     const { btc: btcStats, eth: ethStats } = await getLatestStats();
 
     await sendMessage(
       [
         `贪婪指数: ${Math.floor(score)}`,
+        '',
         `BTC 占比: ${btc.toFixed(2)}%`,
-        ...(btcStats ? stringifyCryptoStats(btcStats) : []),
+        ...(btcStats ? stringifyCryptoStats({ ...btcStats, total_volume_24h }) : []),
+        '',
         `ETH 占比: ${eth.toFixed(2)}%`,
-        ...(ethStats ? stringifyCryptoStats(ethStats) : []),
+        ...(ethStats ? stringifyCryptoStats({ ...ethStats, total_volume_24h }) : []),
       ].join('\n')
     );
 
