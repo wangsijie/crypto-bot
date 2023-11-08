@@ -68,10 +68,10 @@ const stringifyGlobalVolume = (stats: GlobalVolume): string[] => {
   return [
     `当前市值: ${prettifyBigNumber(total_market_cap)}`,
     `昨日市值: ${prettifyBigNumber(total_market_cap_yesterday)}`,
-    `24 小时市值涨跌幅: ${total_market_cap_yesterday_percentage_change.toFixed(2)}%`,
+    `市值变化: ${total_market_cap_yesterday_percentage_change.toFixed(2)}%`,
+    `今日成交额: ${prettifyBigNumber(total_volume_24h)}`,
     `昨日成交额: ${prettifyBigNumber(total_volume_24h_yesterday)}`,
-    `24 小时成交额: ${prettifyBigNumber(total_volume_24h)}`,
-    `24 小时成交额涨跌幅: ${total_volume_24h_yesterday_percentage_change.toFixed(2)}%`,
+    `成交额变化: ${total_volume_24h_yesterday_percentage_change.toFixed(2)}%`,
   ];
 };
 
