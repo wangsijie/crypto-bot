@@ -13,19 +13,32 @@ type CryptoStats = {
   market_cap: number;
 };
 
-const formatNumberWithCommas = (num: number): string =>
-  num.toFixed(2).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+type GlobalVolume = {
+  total_volume_24h: number;
+  total_market_cap: number;
+  total_market_cap_yesterday: number;
+  total_volume_24h_yesterday: number;
+  total_market_cap_yesterday_percentage_change: number;
+  total_volume_24h_yesterday_percentage_change: number;
+};
 
-const prettifyBigNumber = (num: number): string => {
+const formatNumberWithCommas = (number_: number): string =>
+  number_.toFixed(2).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+const prettifyBigNumber = (number_: number): string => {
   const million = 1_000_000;
   const billion = 1_000_000_000;
-  if (num < million) {
-    return formatNumberWithCommas(num);
+  const trillion = 1_000_000_000_000;
+  if (number_ < million) {
+    return formatNumberWithCommas(number_);
   }
-  if (million <= num && num < billion) {
-    return `${formatNumberWithCommas(num / million)} m`;
+  if (million <= number_ && number_ < billion) {
+    return `${formatNumberWithCommas(number_ / million)} m`;
   }
-  return `${formatNumberWithCommas(num / billion)} b`;
+  if (billion <= number_ && number_ < trillion) {
+    return `${formatNumberWithCommas(number_ / billion)} b`;
+  }
+  return `${formatNumberWithCommas(number_ / trillion)} t`;
 };
 
 const stringifyCryptoStats = (stats: CryptoStats & { total_volume_24h?: number }): string[] => {
@@ -38,8 +51,27 @@ const stringifyCryptoStats = (stats: CryptoStats & { total_volume_24h?: number }
     `24 小时换手率: ${((100 * volume_24h) / market_cap).toFixed(2)}%`,
     `24 小时成交量: ${prettifyBigNumber(volume_24h)}`,
     ...(total_volume_24h
-      ? [`24 小时成交量占比: ${((100 * volume_24h) / total_volume_24h).toFixed(2)}%`]
+      ? [`24 小时成交额占比: ${((100 * volume_24h) / total_volume_24h).toFixed(2)}%`]
       : []),
+  ];
+};
+
+const stringifyGlobalVolume = (stats: GlobalVolume): string[] => {
+  const {
+    total_volume_24h,
+    total_market_cap,
+    total_market_cap_yesterday,
+    total_volume_24h_yesterday,
+    total_market_cap_yesterday_percentage_change,
+    total_volume_24h_yesterday_percentage_change,
+  } = stats;
+  return [
+    `当前市值: ${prettifyBigNumber(total_market_cap)}`,
+    `昨日市值: ${prettifyBigNumber(total_market_cap_yesterday)}`,
+    `24 小时市值涨跌幅: ${total_market_cap_yesterday_percentage_change.toFixed(2)}%`,
+    `昨日成交额: ${prettifyBigNumber(total_volume_24h_yesterday)}`,
+    `24 小时成交额: ${prettifyBigNumber(total_volume_24h)}`,
+    `24 小时成交额涨跌幅: ${total_volume_24h_yesterday_percentage_change.toFixed(2)}%`,
   ];
 };
 
@@ -70,16 +102,14 @@ const sendMessage = async (message: string) => {
 const getGlobalMetrics = async (): Promise<{
   btc: number;
   eth: number;
-  total_volume_24h: number;
+  globalVolume: GlobalVolume;
 }> => {
-  type ResponseType = {
+  type ApiResponseType = {
     data: {
       btc_dominance: number;
       eth_dominance: number;
       quote: {
-        USD: {
-          total_volume_24h: number;
-        };
+        USD: GlobalVolume;
       };
     };
   };
@@ -101,17 +131,35 @@ const getGlobalMetrics = async (): Promise<{
     throw new Error('Failed to fetch coinmarketcap.com');
   }
 
-  const json = (await response.json()) as ResponseType;
+  const json = (await response.json()) as ApiResponseType;
 
   const {
     btc_dominance,
     eth_dominance,
     quote: {
-      USD: { total_volume_24h },
+      USD: {
+        total_volume_24h,
+        total_market_cap,
+        total_market_cap_yesterday,
+        total_volume_24h_yesterday,
+        total_market_cap_yesterday_percentage_change,
+        total_volume_24h_yesterday_percentage_change,
+      },
     },
   } = json.data;
 
-  return { btc: btc_dominance, eth: eth_dominance, total_volume_24h };
+  return {
+    btc: btc_dominance,
+    eth: eth_dominance,
+    globalVolume: {
+      total_volume_24h,
+      total_market_cap,
+      total_market_cap_yesterday,
+      total_volume_24h_yesterday,
+      total_market_cap_yesterday_percentage_change,
+      total_volume_24h_yesterday_percentage_change,
+    },
+  };
 };
 
 const getLatestStats = async (): Promise<{ btc?: CryptoStats; eth?: CryptoStats }> => {
@@ -122,7 +170,7 @@ const getLatestStats = async (): Promise<{ btc?: CryptoStats; eth?: CryptoStats 
     };
   };
 
-  type ResponseType = {
+  type ApiResponseType = {
     data: DataPayload[];
   };
 
@@ -143,7 +191,7 @@ const getLatestStats = async (): Promise<{ btc?: CryptoStats; eth?: CryptoStats 
     throw new Error('Failed to fetch coinmarketcap.com');
   }
 
-  const json = (await response.json()) as ResponseType;
+  const json = (await response.json()) as ApiResponseType;
 
   if (!json || !json.data) {
     throw new Error('Failed to latest stats');
@@ -189,18 +237,24 @@ export async function GET(request: NextRequest) {
 
   try {
     const score = await getFearIndex();
-    const { btc, eth, total_volume_24h } = await getGlobalMetrics();
+    const { btc, eth, globalVolume } = await getGlobalMetrics();
     const { btc: btcStats, eth: ethStats } = await getLatestStats();
 
     await sendMessage(
       [
         `贪婪指数: ${Math.floor(score)}`,
         '',
+        ...stringifyGlobalVolume(globalVolume),
+        '',
         `BTC 占比: ${btc.toFixed(2)}%`,
-        ...(btcStats ? stringifyCryptoStats({ ...btcStats, total_volume_24h }) : []),
+        ...(btcStats
+          ? stringifyCryptoStats({ ...btcStats, total_volume_24h: globalVolume.total_volume_24h })
+          : []),
         '',
         `ETH 占比: ${eth.toFixed(2)}%`,
-        ...(ethStats ? stringifyCryptoStats({ ...ethStats, total_volume_24h }) : []),
+        ...(ethStats
+          ? stringifyCryptoStats({ ...ethStats, total_volume_24h: globalVolume.total_volume_24h })
+          : []),
       ].join('\n')
     );
 
