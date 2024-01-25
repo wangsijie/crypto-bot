@@ -1,26 +1,16 @@
 {
-  "name": "crypto-bot",
-  "version": "1.0.0",
-  "repository": "git@github.com:wangsijie/crypto-bot.git",
-  "author": "wangsijie <sijiewg@gmail.com>",
-  "license": "MIT",
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "next": "^13.4.19",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.6.2",
-    "@types/react": "^18.2.21",
-    "@types/react-dom": "^18.2.7",
-    "eslint": "^8.49.0",
-    "eslint-config-next": "^13.4.19",
-    "typescript": "^5.2.2",
-    "vercel": "^32.4.1"
-  }
+	"name": "crypto-bot",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy src/index.ts",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20231016.0",
+		"typescript": "^5.0.4",
+		"wrangler": "^3.0.0"
+	}
 }

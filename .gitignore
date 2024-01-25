@@ -1,8 +1,5 @@
-node_modules
-dist
 .DS_Store
-.next
-public/posts
-public/ilovetile
-.vercel
-.env.development.local
+/node_modules
+*.log
+/dist
+wrangler.toml
