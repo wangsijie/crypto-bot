@@ -190,13 +190,17 @@ export default {
 		await sendMessage(
 			[
 				`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
+				`BTC: ${btcStats && Math.floor(btcStats.price)}`,
+				'',
+				...(btcStats
+					? stringifyCryptoStats({
+							...btcStats,
+							total_volume_24h: globalVolume.total_volume_24h,
+							dominance: btc,
+					  })
+					: []),
 				'',
 				...stringifyGlobalVolume(globalVolume),
-				'',
-				`BTC 占比: ${btc.toFixed(2)}%`,
-				...(btcStats
-					? stringifyCryptoStats({ ...btcStats, total_volume_24h: globalVolume.total_volume_24h })
-					: []),
 				'',
 			].join('\n')
 		);

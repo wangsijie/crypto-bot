@@ -35,18 +35,18 @@ export const prettifyBigNumber = (number_: number): string => {
 };
 
 export const stringifyCryptoStats = (
-	stats: CryptoStats & { total_volume_24h?: number }
+	stats: CryptoStats & { total_volume_24h?: number; dominance: number }
 ): string[] => {
-	const { price, volume_24h, percent_change_1h, percent_change_24h, market_cap, total_volume_24h } =
+	const { dominance, volume_24h, percent_change_1h, percent_change_24h, market_cap, total_volume_24h } =
 		stats;
 	return [
-		`价格: ${price.toFixed(2)} USD`,
-		`1 小时涨跌幅: ${percent_change_1h.toFixed(2)}%`,
-		`24 小时涨跌幅: ${percent_change_24h.toFixed(2)}%`,
-		`24 小时换手率: ${((100 * volume_24h) / market_cap).toFixed(2)}%`,
+		`占比: ${Math.floor(dominance)}%`,
+		`1 小时涨跌幅: ${Math.floor(percent_change_1h)}%`,
+		`24 小时涨跌幅: ${Math.floor(percent_change_24h)}%`,
+		`24 小时换手率: ${Math.floor((100 * volume_24h) / market_cap)}%`,
 		`24 小时成交量: ${prettifyBigNumber(volume_24h)}`,
 		...(total_volume_24h
-			? [`24 小时成交额占比: ${((100 * volume_24h) / total_volume_24h).toFixed(2)}%`]
+			? [`24 小时成交额占比: ${Math.floor((100 * volume_24h) / total_volume_24h)}%`]
 			: []),
 	];
 };
