@@ -183,14 +183,40 @@ export default {
 			return [Number(json.now.value), Number(json.yesterday.value)];
 		};
 
+		const getFundingRate = async (): Promise<number> => {
+			const response = await fetch(
+				'https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP'
+			);
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch okx');
+			}
+
+			const json = (await response.json()) as {
+				data: Array<{
+					fundingRate: string;
+				}>;
+			};
+
+			const rate = json.data[0]?.fundingRate;
+
+			if (!rate) {
+				throw new Error('Failed to fetch funding rate');
+			}
+
+			return Math.round(Number(rate) * 100 * 1000) / 1000;
+		};
+
 		const [score, yesterdayScore] = await getFearIndex();
 		const { btc, globalVolume } = await getGlobalMetrics();
 		const { btc: btcStats } = await getLatestStats();
+		const fundingRate = await getFundingRate();
 
 		await sendMessage(
 			[
 				`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 				`BTC: ${btcStats && Math.floor(btcStats.price)}`,
+				`合约费率: ${fundingRate}%`,
 				'',
 				...(btcStats
 					? stringifyCryptoStats({
