@@ -218,7 +218,7 @@ const handler = async (env: Env) => {
 	return [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${btcStats && Math.floor(btcStats.price)}`,
-		`合约费率: ${fundingRate}%`,
+		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
 		`ETH: ${ethStats && Math.floor(ethStats.price)}`,
 		`ORDI: ${ordiStats && ordiStats.price.toPrecision(4)}`,
 		'',
