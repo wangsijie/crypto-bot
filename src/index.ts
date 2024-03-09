@@ -124,10 +124,34 @@ const handler = async (env: Env) => {
 		};
 	};
 
+	const getCoinPrice = async (coin: string): Promise<number> => {
+		type DataPayload = {
+			last: string;
+		};
+
+		type ApiResponseType = {
+			data: DataPayload;
+		};
+
+		const response = await fetch(
+			`https://www.okx.com/api/v5/market/index-components?index=${coin}-USDT`
+		);
+
+		if (!response.ok) {
+			throw new Error('Failed to fetch okx price');
+		}
+
+		const json = (await response.json()) as ApiResponseType;
+
+		if (!json || !json.data) {
+			throw new Error('Failed to latest stats');
+		}
+
+		return Number(json.data.last);
+	};
+
 	const getLatestStats = async (): Promise<{
 		btc?: CryptoStats;
-		eth?: CryptoStats;
-		ordi?: CryptoStats;
 	}> => {
 		type DataPayload = {
 			id: number;
@@ -165,10 +189,8 @@ const handler = async (env: Env) => {
 		}
 
 		const btcPayload = json.data.find(({ symbol }) => symbol === 'BTC'); // BTC coinMarketCap id 1
-		const ethPayload = json.data.find(({ symbol }) => symbol === 'ETH'); // ETH coinMarketCap id 1027
-		const ordiPayload = json.data.find(({ symbol }) => symbol === 'ORDI');
 
-		return { btc: btcPayload?.quote.USD, eth: ethPayload?.quote.USD, ordi: ordiPayload?.quote.USD };
+		return { btc: btcPayload?.quote.USD };
 	};
 
 	const getFearIndex = async (): Promise<[number, number]> => {
@@ -212,15 +234,16 @@ const handler = async (env: Env) => {
 
 	const [score, yesterdayScore] = await getFearIndex();
 	const { btc, globalVolume } = await getGlobalMetrics();
-	const { btc: btcStats, eth: ethStats, ordi: ordiStats } = await getLatestStats();
+	const { btc: btcStats } = await getLatestStats();
 	const fundingRate = await getFundingRate();
+	const btcPrice = await getCoinPrice('BTC');
+	const ethPrice = await getCoinPrice('ETH');
 
 	return [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
-		`BTC: ${btcStats && Math.floor(btcStats.price)}`,
+		`BTC: ${Math.floor(btcPrice)}`,
 		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
-		`ETH: ${ethStats && Math.floor(ethStats.price)}`,
-		`ORDI: ${ordiStats && ordiStats.price.toPrecision(4)}`,
+		`ETH: ${Math.floor(ethPrice)}`,
 		'',
 		...(btcStats
 			? stringifyCryptoStats({
