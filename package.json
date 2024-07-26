@@ -3,14 +3,11 @@
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
-		"deploy": "wrangler deploy src/index.ts",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
-		"test": "vitest run"
+		"build": "tsc",
+		"start": "node build/index.js"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20231016.0",
-		"typescript": "^5.0.4",
-		"wrangler": "^3.0.0"
+		"@types/node": "^20.14.12",
+		"typescript": "^5.0.4"
 	}
 }

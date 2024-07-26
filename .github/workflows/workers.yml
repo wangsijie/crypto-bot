@@ -1,22 +1,46 @@
-name: Deploy workers
+name: build
 
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
-  initBot:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-      - uses: pnpm/action-setup@v2
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
+
+      - name: build and package
+        run: |
+          npm i
+          npm run build
+          rm -rf .git
+          rm -rf src
+          tar -czf ../bundle.tar.gz .
+          mv ../bundle.tar.gz bundle.tar.gz
+
+      - name: rsync deployments
+        uses: burnett01/rsync-deployments@5.2.1
         with:
-          version: 8
-      - run: pnpm i
-      - name: Publish
-        uses: cloudflare/wrangler-action@2.0.0
+          switches: -avz
+          path: bundle.tar.gz
+          remote_path: /home/wwwroot/crypto-bot/
+          remote_host: ${{ secrets.PROD_SSH_HOST }}
+          remote_user: ubuntu
+          remote_key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: deploy production
+        uses: fifsky/ssh-action@master
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: |
+            sudo su
+            cd /home/wwwroot/crypto-bot
+            rm -rf code/
+            mkdir -p code
+            tar -xzf bundle.tar.gz -C code
+          host: ${{ secrets.PROD_SSH_HOST }}
+          user: ubuntu
+          key: ${{ secrets.PROD_SSH_KEY }}

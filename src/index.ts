@@ -1,40 +1,9 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
 import { CryptoStats, GlobalVolume, stringifyCryptoStats, stringifyGlobalVolume } from './utils';
 
-export interface Env {
-	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
-	//
-	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-	// MY_DURABLE_OBJECT: DurableObjectNamespace;
-	//
-	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-	// MY_BUCKET: R2Bucket;
-	//
-	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
-	// MY_SERVICE: Fetcher;
-	//
-	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
-	// MY_QUEUE: Queue;
-
-	BOT_TOKEN: string;
-	CHAT_ID: string;
-	CMC_API_KEY: string;
-}
-
-const sendMessage = async (message: string, env: Env) => {
-	const botToken = env.BOT_TOKEN;
+const sendMessage = async (message: string) => {
+	const botToken = process.env.BOT_TOKEN;
 	const baseUrl = `https://api.telegram.org/bot${botToken}`;
-	const chatId = env.CHAT_ID;
+	const chatId = process.env.CHAT_ID;
 
 	if (!chatId) {
 		console.log('No chat id, skip sending message', message);
@@ -58,8 +27,8 @@ const sendMessage = async (message: string, env: Env) => {
 	}
 };
 
-const handler = async (env: Env) => {
-	const cmcApiKey = env.CMC_API_KEY;
+const handler = async () => {
+	const cmcApiKey = process.env.CMC_API_KEY;
 
 	const getGlobalMetrics = async (): Promise<{
 		btc: number;
@@ -258,13 +227,4 @@ const handler = async (env: Env) => {
 	].join('\n');
 };
 
-export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const message = await handler(env);
-		return new Response(message);
-	},
-	async scheduled(event: Event, env: Env, ctx: ExecutionContext) {
-		const message = await handler(env);
-		await sendMessage(message, env);
-	},
-};
+void handler().then(sendMessage);

@@ -15,8 +15,9 @@ export type GlobalVolume = {
 	total_volume_24h_yesterday_percentage_change: number;
 };
 
-export const formatNumberWithCommas = (number_: number): string =>
-	number_.toFixed(2).replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',');
+export const formatNumberWithCommas = (number_: number): string => {
+	return number_.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
 
 export const prettifyBigNumber = (number_: number): string => {
 	const million = 1_000_000;
