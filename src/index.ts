@@ -119,6 +119,28 @@ const handler = async () => {
 		return Number(json.data.last);
 	};
 
+	const getIndexTicker = async (instId: string): Promise<number> => {
+		const response = await fetch(`https://www.okx.com/api/v5/market/index-tickers?instId=${instId}`);
+
+		if (!response.ok) {
+			throw new Error('Failed to fetch okx ticker');
+		}
+
+		const json = (await response.json()) as {
+			data: Array<{
+				idxPx: string;
+			}>;
+		};
+
+		const latestIndexPrice = json.data[0]?.idxPx;
+
+		if (!latestIndexPrice) {
+			throw new Error('Failed to fetch latest index price for ' + instId);
+		}
+
+		return Number(latestIndexPrice);
+	}
+
 	const getLatestStats = async (): Promise<{
 		btc?: CryptoStats;
 	}> => {
@@ -201,18 +223,31 @@ const handler = async () => {
 		return Math.round(Number(rate) * 100 * 1000) / 1000;
 	};
 
-	const [score, yesterdayScore] = await getFearIndex();
-	const { btc, globalVolume } = await getGlobalMetrics();
-	const { btc: btcStats } = await getLatestStats();
-	const fundingRate = await getFundingRate();
-	const btcPrice = await getCoinPrice('BTC');
-	const ethPrice = await getCoinPrice('ETH');
+	// Refactor the following code with promise.all
+	const [
+		[score, yesterdayScore],
+		{ btc, globalVolume },
+		{ btc: btcStats },
+		fundingRate,
+		btcPrice,
+		ethPrice,
+		ethToBtcIndexPrice,
+	] = await Promise.all([
+		getFearIndex(),
+		getGlobalMetrics(),
+		getLatestStats(),
+		getFundingRate(),
+		getCoinPrice('BTC'),
+		getCoinPrice('ETH'),
+		getIndexTicker('ETH-BTC'),
+	]);
 
 	return [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
 		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
 		`ETH: ${Math.floor(ethPrice)}`,
+		`ETH/BTC: ${ethToBtcIndexPrice}`,
 		'',
 		...(btcStats
 			? stringifyCryptoStats({
