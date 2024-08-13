@@ -120,7 +120,9 @@ const handler = async () => {
 	};
 
 	const getIndexTicker = async (instId: string): Promise<number> => {
-		const response = await fetch(`https://www.okx.com/api/v5/market/index-tickers?instId=${instId}`);
+		const response = await fetch(
+			`https://www.okx.com/api/v5/market/index-tickers?instId=${instId}`
+		);
 
 		if (!response.ok) {
 			throw new Error('Failed to fetch okx ticker');
@@ -139,7 +141,7 @@ const handler = async () => {
 		}
 
 		return Number(latestIndexPrice);
-	}
+	};
 
 	const getLatestStats = async (): Promise<{
 		btc?: CryptoStats;
@@ -223,6 +225,12 @@ const handler = async () => {
 		return Math.round(Number(rate) * 100 * 1000) / 1000;
 	};
 
+	const getRecommendedPositionSize = (annualFundingRate: number): number => {
+		// rate from 0% to 50%, position size from 75% - 25%
+		const rate = Math.max(Math.min(annualFundingRate, 0.5), 0);
+		return 0.75 - rate * 1.5;
+	};
+
 	// Refactor the following code with promise.all
 	const [
 		[score, yesterdayScore],
@@ -241,11 +249,13 @@ const handler = async () => {
 		getCoinPrice('ETH'),
 		getIndexTicker('ETH-BTC'),
 	]);
+	const positionSize = getRecommendedPositionSize(fundingRate * 365 * 3 / 100);
 
 	return [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
 		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
+		`推荐仓位: ${Math.round(positionSize * 100)}%`,
 		`ETH: ${Math.floor(ethPrice)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 		'',
