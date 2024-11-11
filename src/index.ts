@@ -226,9 +226,8 @@ const handler = async () => {
 	};
 
 	const getRecommendedPositionSize = (annualFundingRate: number): number => {
-		// rate from 0% to 50%, position size from 75% - 25%
-		const rate = Math.max(Math.min(annualFundingRate, 0.5), 0);
-		return 0.75 - rate * 1.5;
+		// rate from 0% to 70%, position size from 75% - 25%
+		return 0.25 + (1 - Math.max(Math.min(annualFundingRate, 0.7), 0) / 0.7) * 0.5;
 	};
 
 	// Refactor the following code with promise.all
@@ -249,7 +248,7 @@ const handler = async () => {
 		getCoinPrice('ETH'),
 		getIndexTicker('ETH-BTC'),
 	]);
-	const positionSize = getRecommendedPositionSize(fundingRate * 365 * 3 / 100);
+	const positionSize = getRecommendedPositionSize((fundingRate * 365 * 3) / 100);
 
 	return [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
