@@ -212,6 +212,7 @@ const handler = async () => {
 		fundingRate,
 		btcPrice,
 		ethPrice,
+		dogePrice,
 		ethToBtcIndexPrice,
 	] = await Promise.all([
 		getFearIndex(),
@@ -220,6 +221,7 @@ const handler = async () => {
 		getFundingRate(),
 		getCoinPrice('BTC'),
 		getCoinPrice('ETH'),
+		getCoinPrice('DOGE'),
 		getIndexTicker('ETH-BTC'),
 	]);
 	const positionSize = getRecommendedPositionSize((fundingRate * 365 * 3) / 100);
@@ -230,6 +232,7 @@ const handler = async () => {
 		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
 		`推荐仓位: ${Math.round(positionSize * 100)}%`,
 		`ETH: ${Math.floor(ethPrice)}`,
+		`DOGE: ${dogePrice.toFixed(4)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 		'',
 		...(btcStats
