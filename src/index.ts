@@ -1,71 +1,7 @@
 import { sendMessage } from './telegram';
-import { CryptoStats, GlobalVolume, stringifyCryptoStats, stringifyGlobalVolume } from './utils';
 
 const handler = async () => {
-	const cmcApiKey = process.env.CMC_API_KEY;
 
-	const getGlobalMetrics = async (): Promise<{
-		btc: number;
-		eth: number;
-		globalVolume: GlobalVolume;
-	}> => {
-		type ApiResponseType = {
-			data: {
-				btc_dominance: number;
-				eth_dominance: number;
-				quote: {
-					USD: GlobalVolume;
-				};
-			};
-		};
-
-		if (!cmcApiKey) {
-			throw new Error('No CMC API key');
-		}
-
-		const response = await fetch(
-			'https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest',
-			{
-				headers: {
-					'X-CMC_PRO_API_KEY': cmcApiKey,
-				},
-			}
-		);
-
-		if (!response.ok) {
-			throw new Error('Failed to fetch coinmarketcap.com');
-		}
-
-		const json = (await response.json()) as ApiResponseType;
-
-		const {
-			btc_dominance,
-			eth_dominance,
-			quote: {
-				USD: {
-					total_volume_24h,
-					total_market_cap,
-					total_market_cap_yesterday,
-					total_volume_24h_yesterday,
-					total_market_cap_yesterday_percentage_change,
-					total_volume_24h_yesterday_percentage_change,
-				},
-			},
-		} = json.data;
-
-		return {
-			btc: btc_dominance,
-			eth: eth_dominance,
-			globalVolume: {
-				total_volume_24h,
-				total_market_cap,
-				total_market_cap_yesterday,
-				total_volume_24h_yesterday,
-				total_market_cap_yesterday_percentage_change,
-				total_volume_24h_yesterday_percentage_change,
-			},
-		};
-	};
 
 	const getCoinPrice = async (coin: string): Promise<number> => {
 		type DataPayload = {
@@ -117,48 +53,7 @@ const handler = async () => {
 		return Number(latestIndexPrice);
 	};
 
-	const getLatestStats = async (): Promise<{
-		btc?: CryptoStats;
-	}> => {
-		type DataPayload = {
-			id: number;
-			symbol: string;
-			quote: {
-				USD: CryptoStats;
-			};
-		};
 
-		type ApiResponseType = {
-			data: DataPayload[];
-		};
-
-		if (!cmcApiKey) {
-			throw new Error('No CMC API key');
-		}
-
-		const response = await fetch(
-			'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
-			{
-				headers: {
-					'X-CMC_PRO_API_KEY': cmcApiKey,
-				},
-			}
-		);
-
-		if (!response.ok) {
-			throw new Error('Failed to fetch coinmarketcap.com');
-		}
-
-		const json = (await response.json()) as ApiResponseType;
-
-		if (!json || !json.data) {
-			throw new Error('Failed to latest stats');
-		}
-
-		const btcPayload = json.data.find(({ symbol }) => symbol === 'BTC'); // BTC coinMarketCap id 1
-
-		return { btc: btcPayload?.quote.USD };
-	};
 
 	const getFearIndex = async (): Promise<[number, number]> => {
 		const response = await fetch('https://api.coin-stats.com/v2/fear-greed');
@@ -199,16 +94,30 @@ const handler = async () => {
 		return Math.round(Number(rate) * 100 * 1000) / 1000;
 	};
 
-	const getRecommendedPositionSize = (annualFundingRate: number): number => {
-		// rate from 0% to 70%, position size from 75% - 25%
-		return 0.25 + (1 - Math.max(Math.min(annualFundingRate, 0.7), 0) / 0.7) * 0.5;
+	const getRecommendedPositionSize = (fearIndex: number): number => {
+		// 20以下固定为300%
+		if (fearIndex < 20) {
+			return 3.0;
+		}
+		// 20-40之间从300%-200%之间线性
+		if (fearIndex < 40) {
+			return 3.0 - (fearIndex - 20) / 20 * 1.0;
+		}
+		// 40-60从200%-100%线性
+		if (fearIndex < 60) {
+			return 2.0 - (fearIndex - 40) / 20 * 1.0;
+		}
+		// 60-80从100%-25%线性
+		if (fearIndex < 80) {
+			return 1.0 - (fearIndex - 60) / 20 * 0.75;
+		}
+		// 80以上统一25%
+		return 0.25;
 	};
 
 	// Refactor the following code with promise.all
 	const [
 		[score, yesterdayScore],
-		{ btc, globalVolume },
-		{ btc: btcStats },
 		fundingRate,
 		btcPrice,
 		ethPrice,
@@ -216,15 +125,13 @@ const handler = async () => {
 		ethToBtcIndexPrice,
 	] = await Promise.all([
 		getFearIndex(),
-		getGlobalMetrics(),
-		getLatestStats(),
 		getFundingRate(),
 		getCoinPrice('BTC'),
 		getCoinPrice('ETH'),
 		getCoinPrice('DOGE'),
 		getIndexTicker('ETH-BTC'),
 	]);
-	const positionSize = getRecommendedPositionSize((fundingRate * 365 * 3) / 100);
+	const positionSize = getRecommendedPositionSize(score);
 
 	return [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
@@ -234,17 +141,6 @@ const handler = async () => {
 		`ETH: ${Math.floor(ethPrice)}`,
 		`DOGE: ${dogePrice.toFixed(4)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
-		'',
-		...(btcStats
-			? stringifyCryptoStats({
-					...btcStats,
-					total_volume_24h: globalVolume.total_volume_24h,
-					dominance: btc,
-			  })
-			: []),
-		'',
-		...stringifyGlobalVolume(globalVolume),
-		'',
 	].join('\n');
 };
 
