@@ -95,23 +95,21 @@ const handler = async () => {
 	};
 
 	const getRecommendedPositionSize = (fearIndex: number): number => {
-		// 20以下固定为300%
-		if (fearIndex < 20) {
+		if (fearIndex < 10) {
 			return 3.0;
 		}
-		// 20-40之间从300%-200%之间线性
+		if (fearIndex < 20) {
+			return 3.0 - (fearIndex - 10) / 10 * 1.0;
+		}
 		if (fearIndex < 40) {
-			return 3.0 - (fearIndex - 20) / 20 * 1.0;
+			return 2.0 - (fearIndex - 20) / 20 * 1.0;
 		}
-		// 40-60从200%-100%线性
 		if (fearIndex < 60) {
-			return 2.0 - (fearIndex - 40) / 20 * 1.0;
+			return 1.0 - (fearIndex - 40) / 20 * 0.5;
 		}
-		// 60-80从100%-25%线性
 		if (fearIndex < 80) {
-			return 1.0 - (fearIndex - 60) / 20 * 0.75;
+			return 0.5 - (fearIndex - 60) / 20 * 0.25;
 		}
-		// 80以上统一25%
 		return 0.25;
 	};
 
