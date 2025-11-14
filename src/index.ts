@@ -102,13 +102,10 @@ const handler = async () => {
 			return 3.0 - (fearIndex - 10) / 10 * 1.0;
 		}
 		if (fearIndex < 40) {
-			return 2.0 - (fearIndex - 20) / 20 * 1.0;
-		}
-		if (fearIndex < 60) {
-			return 1.0 - (fearIndex - 40) / 20 * 0.5;
+			return 2 - (fearIndex - 20) / 20 * 1.25;
 		}
 		if (fearIndex < 80) {
-			return 0.5 - (fearIndex - 60) / 20 * 0.25;
+			return 0.75 - (fearIndex - 40) / 40 * 0.25;
 		}
 		return 0.25;
 	};
