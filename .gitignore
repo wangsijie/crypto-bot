@@ -5,3 +5,4 @@
 .wrangler
 .dev.vars
 build
+.env

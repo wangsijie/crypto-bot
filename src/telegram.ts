@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 export const sendMessage = async (message: string) => {
 	const botToken = process.env.BOT_TOKEN;
 	const baseUrl = `https://api.telegram.org/bot${botToken}`;

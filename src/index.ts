@@ -1,3 +1,5 @@
+import 'dotenv/config';
+import { getFearIndex } from './fearIndex';
 import { sendMessage } from './telegram';
 
 const handler = async () => {
@@ -49,21 +51,6 @@ const handler = async () => {
 		}
 
 		return Number(latestIndexPrice);
-	};
-
-	const getFearIndex = async (): Promise<[number, number]> => {
-		const response = await fetch('https://api.coin-stats.com/v2/fear-greed');
-
-		if (!response.ok) {
-			throw new Error('Failed to fetch api.coin-stats.com');
-		}
-
-		const json = (await response.json()) as {
-			now: { value: string };
-			yesterday: { value: string };
-		};
-
-		return [Number(json.now.value), Number(json.yesterday.value)];
 	};
 
 	const getFundingRate = async (): Promise<number> => {
