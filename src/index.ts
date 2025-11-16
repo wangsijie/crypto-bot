@@ -1,8 +1,6 @@
 import { sendMessage } from './telegram';
 
 const handler = async () => {
-
-
 	const getCoinPrice = async (coin: string): Promise<number> => {
 		type DataPayload = {
 			last: string;
@@ -53,8 +51,6 @@ const handler = async () => {
 		return Number(latestIndexPrice);
 	};
 
-
-
 	const getFearIndex = async (): Promise<[number, number]> => {
 		const response = await fetch('https://api.coin-stats.com/v2/fear-greed');
 
@@ -99,33 +95,27 @@ const handler = async () => {
 			return 3.0;
 		}
 		if (fearIndex < 20) {
-			return 3.0 - (fearIndex - 10) / 10 * 1.0;
+			return 3.0 - ((fearIndex - 10) / 10) * 1.0;
 		}
 		if (fearIndex < 40) {
-			return 2 - (fearIndex - 20) / 20 * 1.25;
+			return 2 - ((fearIndex - 20) / 20) * 1.25;
 		}
 		if (fearIndex < 80) {
-			return 0.75 - (fearIndex - 40) / 40 * 0.25;
+			return 0.75 - ((fearIndex - 40) / 40) * 0.25;
 		}
 		return 0.25;
 	};
 
 	// Refactor the following code with promise.all
-	const [
-		[score, yesterdayScore],
-		fundingRate,
-		btcPrice,
-		ethPrice,
-		dogePrice,
-		ethToBtcIndexPrice,
-	] = await Promise.all([
-		getFearIndex(),
-		getFundingRate(),
-		getCoinPrice('BTC'),
-		getCoinPrice('ETH'),
-		getCoinPrice('DOGE'),
-		getIndexTicker('ETH-BTC'),
-	]);
+	const [[score, yesterdayScore], fundingRate, btcPrice, ethPrice, dogePrice, ethToBtcIndexPrice] =
+		await Promise.all([
+			getFearIndex(),
+			getFundingRate(),
+			getCoinPrice('BTC'),
+			getCoinPrice('ETH'),
+			getCoinPrice('DOGE'),
+			getIndexTicker('ETH-BTC'),
+		]);
 	const positionSize = getRecommendedPositionSize(score);
 
 	return [
