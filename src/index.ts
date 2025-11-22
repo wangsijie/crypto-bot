@@ -77,20 +77,20 @@ const handler = async () => {
 		return Math.round(Number(rate) * 100 * 1000) / 1000;
 	};
 
-	const getRecommendedPositionSize = (fearIndex: number): number => {
-		if (fearIndex < 10) {
-			return 3.0;
+	const getRecommendedAction = (fearIndex: number): string => {
+		if (fearIndex < 25) {
+			return '买入一份(冷静1天)';
 		}
-		if (fearIndex < 20) {
-			return 3.0 - ((fearIndex - 10) / 10) * 1.0;
+		if (fearIndex < 50) {
+			return '买入一份(冷静7天)';
 		}
-		if (fearIndex < 40) {
-			return 2 - ((fearIndex - 20) / 20) * 1.25;
+		if (fearIndex < 75) {
+			return '观望';
 		}
-		if (fearIndex < 80) {
-			return 0.75 - ((fearIndex - 40) / 40) * 0.25;
+		if (fearIndex < 85) {
+			return '卖出一份(冷静5天)';
 		}
-		return 0.25;
+		return '卖出一份(冷静1天)';
 	};
 
 	// Refactor the following code with promise.all
@@ -103,13 +103,13 @@ const handler = async () => {
 			getCoinPrice('DOGE'),
 			getIndexTicker('ETH-BTC'),
 		]);
-	const positionSize = getRecommendedPositionSize(score);
+	const action = getRecommendedAction(score);
 
 	return [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
 		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
-		`推荐仓位: ${Math.round(positionSize * 100)}%`,
+		`推荐操作: ${action}`,
 		`ETH: ${Math.floor(ethPrice)}`,
 		`DOGE: ${dogePrice.toFixed(4)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
