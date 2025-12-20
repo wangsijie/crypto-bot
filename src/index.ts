@@ -59,30 +59,6 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		return Number(latestIndexPrice);
 	};
 
-	const getFundingRate = async (): Promise<number> => {
-		const response = await fetch(
-			'https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP'
-		);
-
-		if (!response.ok) {
-			throw new Error('Failed to fetch okx');
-		}
-
-		const json = (await response.json()) as {
-			data: Array<{
-				fundingRate: string;
-			}>;
-		};
-
-		const rate = json.data[0]?.fundingRate;
-
-		if (!rate) {
-			throw new Error('Failed to fetch funding rate');
-		}
-
-		return Math.round(Number(rate) * 100 * 1000) / 1000;
-	};
-
 	const getRecommendedAction = (fearIndex: number): string => {
 		if (fearIndex < 25) {
 			return '买入一份(冷静1天)';
@@ -102,7 +78,6 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 	// Fetch all data in parallel
 	const [
 		[score, yesterdayScore],
-		fundingRate,
 		btcPrice,
 		ethPrice,
 		dogePrice,
@@ -110,7 +85,6 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		fearIndexHistory,
 	] = await Promise.all([
 		getFearIndex(env.CMC_API_KEY),
-		getFundingRate(),
 		getCoinPrice('BTC'),
 		getCoinPrice('ETH'),
 		getCoinPrice('DOGE'),
@@ -130,7 +104,6 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 	const message = [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
-		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
 		`推荐操作: ${action}`,
 		`ETH: ${Math.floor(ethPrice)}`,
 		`DOGE: ${dogePrice.toFixed(4)}`,
