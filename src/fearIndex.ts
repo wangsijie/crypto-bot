@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 type LatestResponse = {
 	data?: {
 		value?: number | string;
@@ -72,12 +70,7 @@ const normalizeTimestamp = (
 	return Number.NaN;
 };
 
-const requestFearAndGreedApi = async (input: string | URL): Promise<unknown> => {
-	const apiKey = process.env.CMC_API_KEY;
-	if (!apiKey) {
-		throw new Error('Missing CMC_API_KEY');
-	}
-
+const requestFearAndGreedApi = async (input: string | URL, apiKey: string): Promise<unknown> => {
 	const response = await fetch(input, {
 		headers: {
 			accept: 'application/json',
@@ -92,19 +85,20 @@ const requestFearAndGreedApi = async (input: string | URL): Promise<unknown> => 
 	return response.json();
 };
 
-const fetchLatestIndex = async (): Promise<number> => {
+const fetchLatestIndex = async (apiKey: string): Promise<number> => {
 	const json = (await requestFearAndGreedApi(
-		'https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest'
+		'https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest',
+		apiKey
 	)) as LatestResponse;
 	const latestValue = json?.data?.value ?? json?.data?.score ?? json?.data?.fg_index;
 	return parseNumericValue(latestValue);
 };
 
-const fetchYesterdayIndex = async (): Promise<number> => {
+const fetchYesterdayIndex = async (apiKey: string): Promise<number> => {
 	const historicalUrl = new URL('https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical');
 	historicalUrl.searchParams.set('limit', '10');
 
-	const json = (await requestFearAndGreedApi(historicalUrl)) as HistoricalResponse;
+	const json = (await requestFearAndGreedApi(historicalUrl, apiKey)) as HistoricalResponse;
 	const entries = (() => {
 		if (Array.isArray(json)) {
 			return json;
@@ -154,7 +148,7 @@ const fetchYesterdayIndex = async (): Promise<number> => {
 	return yesterdayEntry.value;
 };
 
-export const getFearIndex = async (): Promise<[number, number]> => {
-	const [today, yesterday] = await Promise.all([fetchLatestIndex(), fetchYesterdayIndex()]);
+export const getFearIndex = async (apiKey: string): Promise<[number, number]> => {
+	const [today, yesterday] = await Promise.all([fetchLatestIndex(apiKey), fetchYesterdayIndex(apiKey)]);
 	return [today, yesterday];
 };
