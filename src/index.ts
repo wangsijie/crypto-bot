@@ -125,7 +125,7 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		try {
 			const message = await handler(env);
-			await sendMessage(message, env.BOT_TOKEN, env.CHAT_ID);
+			// HTTP trigger: only return text, don't send Telegram message
 			return new Response(JSON.stringify({ success: true, message }), {
 				headers: { 'content-type': 'application/json' },
 			});
