@@ -2,9 +2,10 @@ name = "crypto-bot"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
-# Trigger on cron schedule (every 8 hours at 0:00, 8:00, 16:00 UTC)
+# Trigger on cron schedule (every 2 hours from 00:30 to 14:30 UTC)
+# Matches previous cron: 30 0-15/2 * * *
 [triggers]
-crons = ["0 0,8,16 * * *"]
+crons = ["30 0,2,4,6,8,10,12,14 * * *"]
 
 # Environment variables (set via wrangler secret put)
 # BOT_TOKEN
