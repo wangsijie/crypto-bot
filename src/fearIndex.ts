@@ -71,6 +71,11 @@ const normalizeTimestamp = (
 };
 
 const requestFearAndGreedApi = async (input: string | URL, apiKey: string): Promise<unknown> => {
+	// Validate API key is provided
+	if (!apiKey || apiKey.trim() === '') {
+		throw new Error('CoinMarketCap API key (CMC_API_KEY) is not configured');
+	}
+
 	const response = await fetch(input, {
 		headers: {
 			accept: 'application/json',
@@ -79,7 +84,32 @@ const requestFearAndGreedApi = async (input: string | URL, apiKey: string): Prom
 	});
 
 	if (!response.ok) {
-		throw new Error(`Failed to fetch CoinMarketCap fear & greed data from ${input.toString()}`);
+		// Try to get error details from response
+		let errorDetails = '';
+		try {
+			const errorBody = await response.text();
+			if (errorBody) {
+				try {
+					const errorJson = JSON.parse(errorBody);
+					errorDetails = JSON.stringify(errorJson);
+				} catch {
+					errorDetails = errorBody.substring(0, 200); // Limit error message length
+				}
+			}
+		} catch {
+			// Ignore errors when reading error body
+		}
+
+		const statusText = response.statusText || 'Unknown Error';
+		const errorMessage = [
+			`Failed to fetch CoinMarketCap fear & greed data from ${input.toString()}`,
+			`HTTP Status: ${response.status} ${statusText}`,
+			errorDetails ? `Error Details: ${errorDetails}` : '',
+		]
+			.filter(Boolean)
+			.join(' | ');
+
+		throw new Error(errorMessage);
 	}
 
 	return response.json();
