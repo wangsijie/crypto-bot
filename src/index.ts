@@ -146,15 +146,159 @@ export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		try {
 			const { message, chartUrl } = await handler(env);
-			// HTTP trigger: only return text, don't send Telegram message
-			return new Response(JSON.stringify({ success: true, message, chartUrl }), {
-				headers: { 'content-type': 'application/json' },
+			// HTTP trigger: return HTML page
+			const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>加密货币监控</title>
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			min-height: 100vh;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			padding: 20px;
+		}
+		.container {
+			background: white;
+			border-radius: 16px;
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+			max-width: 900px;
+			width: 100%;
+			overflow: hidden;
+		}
+		.header {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			padding: 30px;
+			text-align: center;
+		}
+		.header h1 {
+			font-size: 28px;
+			margin-bottom: 10px;
+		}
+		.header p {
+			opacity: 0.9;
+			font-size: 14px;
+		}
+		.content {
+			padding: 30px;
+		}
+		.info-box {
+			background: #f8f9fa;
+			border-radius: 12px;
+			padding: 24px;
+			margin-bottom: 24px;
+			line-height: 1.8;
+			font-size: 16px;
+		}
+		.info-box div {
+			margin-bottom: 8px;
+		}
+		.info-box div:last-child {
+			margin-bottom: 0;
+		}
+		.info-box strong {
+			color: #667eea;
+			font-weight: 600;
+		}
+		.chart-box {
+			text-align: center;
+		}
+		.chart-box h2 {
+			color: #333;
+			margin-bottom: 20px;
+			font-size: 20px;
+		}
+		.chart-box img {
+			max-width: 100%;
+			height: auto;
+			border-radius: 8px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		}
+		.footer {
+			text-align: center;
+			padding: 20px;
+			color: #999;
+			font-size: 12px;
+			border-top: 1px solid #eee;
+		}
+		@media (max-width: 600px) {
+			.header h1 { font-size: 24px; }
+			.content { padding: 20px; }
+			.info-box { padding: 16px; font-size: 14px; }
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="header">
+			<h1>📊 加密货币监控</h1>
+			<p>实时数据更新 | Crypto Market Monitor</p>
+		</div>
+		<div class="content">
+			<div class="info-box">
+				${message.split('\n').map(line => `<div>${line}</div>`).join('')}
+			</div>
+			<div class="chart-box">
+				<h2>近30天贪婪恐慌指数走势</h2>
+				<img src="${chartUrl}" alt="Fear & Greed Index Chart">
+			</div>
+		</div>
+		<div class="footer">
+			数据更新时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
+		</div>
+	</div>
+</body>
+</html>`;
+			return new Response(html, {
+				headers: { 'content-type': 'text/html; charset=utf-8' },
 			});
 		} catch (error) {
 			console.error('Error:', error);
-			return new Response(JSON.stringify({ success: false, error: String(error) }), {
+			const errorHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>错误</title>
+	<style>
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			min-height: 100vh;
+			background: #f5f5f5;
+			padding: 20px;
+		}
+		.error-box {
+			background: white;
+			padding: 40px;
+			border-radius: 12px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			max-width: 500px;
+			text-align: center;
+		}
+		h1 { color: #e74c3c; margin-bottom: 16px; }
+		p { color: #666; line-height: 1.6; }
+	</style>
+</head>
+<body>
+	<div class="error-box">
+		<h1>⚠️ 出错了</h1>
+		<p>${String(error)}</p>
+	</div>
+</body>
+</html>`;
+			return new Response(errorHtml, {
 				status: 500,
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'text/html; charset=utf-8' },
 			});
 		}
 	},
