@@ -44,6 +44,6 @@ npm run deploy
 
 ## Scheduled Tasks
 
-The worker runs automatically every 8 hours (0:00, 8:00, 16:00 UTC) as configured in `wrangler.toml`.
+The worker runs automatically every 2 hours (00:30, 02:30, 04:30, 06:30, 08:30, 10:30, 12:30, 14:30 UTC) as configured in `wrangler.toml`.
 
 You can also trigger it manually by making an HTTP request to the worker URL.
