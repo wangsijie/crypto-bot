@@ -59,6 +59,42 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		return Number(latestIndexPrice);
 	};
 
+	type BtcPriceHistoryPoint = {
+		date: string; // YYYY-MM-DD format
+		price: number;
+	};
+
+	const getBtcPriceHistory = async (days = 30): Promise<BtcPriceHistoryPoint[]> => {
+		// OKX candlestick API: returns [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
+		const response = await fetch(
+			`https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=1D&limit=${days + 1}`
+		);
+
+		if (!response.ok) {
+			throw new Error('Failed to fetch BTC price history');
+		}
+
+		const json = (await response.json()) as {
+			data: Array<[string, string, string, string, string, string, string, string, string]>;
+		};
+
+		if (!json.data || !json.data.length) {
+			throw new Error('No BTC price history data returned');
+		}
+
+		// Convert to our format, data is returned newest first
+		const history = json.data
+			.map((candle) => {
+				const timestamp = Number(candle[0]);
+				const closePrice = Number(candle[4]); // Use close price
+				const date = new Date(timestamp).toISOString().slice(0, 10);
+				return { date, price: closePrice };
+			})
+			.reverse(); // Reverse to get oldest first
+
+		return history;
+	};
+
 	const getRecommendedAction = (fearIndex: number): string => {
 		if (fearIndex < 25) {
 			return '买入一份(冷静1天)';
@@ -83,6 +119,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		dogePrice,
 		ethToBtcIndexPrice,
 		fearIndexHistory,
+		btcPriceHistory,
 	] = await Promise.all([
 		getFearIndex(env.CMC_API_KEY),
 		getCoinPrice('BTC'),
@@ -90,6 +127,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		getCoinPrice('DOGE'),
 		getIndexTicker('ETH-BTC'),
 		getFearIndexHistory(env.CMC_API_KEY, 30),
+		getBtcPriceHistory(30),
 	]);
 	const action = getRecommendedAction(score);
 
@@ -101,6 +139,12 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		? fearIndexHistory
 		: [...fearIndexHistory.slice(-(30 - 1)), { date: today, value: score }];
 
+	// Ensure today's BTC price is included
+	const hasTodayBtc = btcPriceHistory.some(point => point.date === today);
+	const btcHistoryWithToday = hasTodayBtc
+		? btcPriceHistory
+		: [...btcPriceHistory.slice(-(30 - 1)), { date: today, price: btcPrice }];
+
 	const message = [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
@@ -110,7 +154,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 	].join('\n');
 
-	const chartUrl = generateFearGreedChartUrl(historyWithToday);
+	const chartUrl = generateFearGreedChartUrl(historyWithToday, btcHistoryWithToday);
 
 	return { message, chartUrl };
 };
