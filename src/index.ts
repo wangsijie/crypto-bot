@@ -1,8 +1,13 @@
-import 'dotenv/config';
 import { getFearIndex } from './fearIndex';
 import { sendMessage } from './telegram';
 
-const handler = async () => {
+export interface Env {
+	BOT_TOKEN: string;
+	CHAT_ID: string;
+	CMC_API_KEY: string;
+}
+
+const handler = async (env: Env) => {
 	const getCoinPrice = async (coin: string): Promise<number> => {
 		type DataPayload = {
 			last: string;
@@ -96,7 +101,7 @@ const handler = async () => {
 	// Refactor the following code with promise.all
 	const [[score, yesterdayScore], fundingRate, btcPrice, ethPrice, dogePrice, ethToBtcIndexPrice] =
 		await Promise.all([
-			getFearIndex(),
+			getFearIndex(env.CMC_API_KEY),
 			getFundingRate(),
 			getCoinPrice('BTC'),
 			getCoinPrice('ETH'),
@@ -116,4 +121,30 @@ const handler = async () => {
 	].join('\n');
 };
 
-void handler().then(sendMessage);
+export default {
+	async fetch(request: Request, env: Env): Promise<Response> {
+		try {
+			const message = await handler(env);
+			await sendMessage(message, env.BOT_TOKEN, env.CHAT_ID);
+			return new Response(JSON.stringify({ success: true, message }), {
+				headers: { 'content-type': 'application/json' },
+			});
+		} catch (error) {
+			console.error('Error:', error);
+			return new Response(JSON.stringify({ success: false, error: String(error) }), {
+				status: 500,
+				headers: { 'content-type': 'application/json' },
+			});
+		}
+	},
+
+	async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+		try {
+			const message = await handler(env);
+			await sendMessage(message, env.BOT_TOKEN, env.CHAT_ID);
+			console.log('Scheduled task completed successfully');
+		} catch (error) {
+			console.error('Scheduled task error:', error);
+		}
+	},
+};

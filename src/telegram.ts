@@ -1,9 +1,5 @@
-import 'dotenv/config';
-
-export const sendMessage = async (message: string) => {
-	const botToken = process.env.BOT_TOKEN;
+export const sendMessage = async (message: string, botToken: string, chatId: string) => {
 	const baseUrl = `https://api.telegram.org/bot${botToken}`;
-	const chatId = process.env.CHAT_ID;
 
 	if (!chatId) {
 		console.log('No chat id, skip sending message', message);

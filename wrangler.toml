@@ -1,0 +1,12 @@
+name = "crypto-bot"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Trigger on cron schedule (every 8 hours at 0:00, 8:00, 16:00 UTC)
+[triggers]
+crons = ["0 0,8,16 * * *"]
+
+# Environment variables (set via wrangler secret put)
+# BOT_TOKEN
+# CHAT_ID
+# CMC_API_KEY
