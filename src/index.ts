@@ -1,5 +1,6 @@
-import { getFearIndex } from './fearIndex';
-import { sendMessage } from './telegram';
+import { getFearIndex, getFearIndexHistory } from './fearIndex';
+import { sendMessage, sendPhoto } from './telegram';
+import { generateFearGreedChartUrl } from './chart';
 
 export interface Env {
 	BOT_TOKEN: string;
@@ -7,7 +8,7 @@ export interface Env {
 	CMC_API_KEY: string;
 }
 
-const handler = async (env: Env) => {
+const handler = async (env: Env): Promise<{ message: string; chartUrl: string }> => {
 	const getCoinPrice = async (coin: string): Promise<number> => {
 		type DataPayload = {
 			last: string;
@@ -98,19 +99,27 @@ const handler = async (env: Env) => {
 		return '卖出一份(冷静1天)';
 	};
 
-	// Refactor the following code with promise.all
-	const [[score, yesterdayScore], fundingRate, btcPrice, ethPrice, dogePrice, ethToBtcIndexPrice] =
-		await Promise.all([
-			getFearIndex(env.CMC_API_KEY),
-			getFundingRate(),
-			getCoinPrice('BTC'),
-			getCoinPrice('ETH'),
-			getCoinPrice('DOGE'),
-			getIndexTicker('ETH-BTC'),
-		]);
+	// Fetch all data in parallel
+	const [
+		[score, yesterdayScore],
+		fundingRate,
+		btcPrice,
+		ethPrice,
+		dogePrice,
+		ethToBtcIndexPrice,
+		fearIndexHistory,
+	] = await Promise.all([
+		getFearIndex(env.CMC_API_KEY),
+		getFundingRate(),
+		getCoinPrice('BTC'),
+		getCoinPrice('ETH'),
+		getCoinPrice('DOGE'),
+		getIndexTicker('ETH-BTC'),
+		getFearIndexHistory(env.CMC_API_KEY, 30),
+	]);
 	const action = getRecommendedAction(score);
 
-	return [
+	const message = [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
 		`合约费率: ${fundingRate}% 年化 ${Math.round(fundingRate * 365 * 3)}%`,
@@ -119,14 +128,18 @@ const handler = async (env: Env) => {
 		`DOGE: ${dogePrice.toFixed(4)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 	].join('\n');
+
+	const chartUrl = generateFearGreedChartUrl(fearIndexHistory);
+
+	return { message, chartUrl };
 };
 
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		try {
-			const message = await handler(env);
+			const { message, chartUrl } = await handler(env);
 			// HTTP trigger: only return text, don't send Telegram message
-			return new Response(JSON.stringify({ success: true, message }), {
+			return new Response(JSON.stringify({ success: true, message, chartUrl }), {
 				headers: { 'content-type': 'application/json' },
 			});
 		} catch (error) {
@@ -140,8 +153,12 @@ export default {
 
 	async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
 		try {
-			const message = await handler(env);
-			await sendMessage(message, env.BOT_TOKEN, env.CHAT_ID);
+			const { message, chartUrl } = await handler(env);
+			// Send both text message and chart photo
+			await Promise.all([
+				sendMessage(message, env.BOT_TOKEN, env.CHAT_ID),
+				sendPhoto(chartUrl, '近30天贪婪恐慌指数走势图', env.BOT_TOKEN, env.CHAT_ID),
+			]);
 			console.log('Scheduled task completed successfully');
 		} catch (error) {
 			console.error('Scheduled task error:', error);

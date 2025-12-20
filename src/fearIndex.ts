@@ -182,3 +182,78 @@ export const getFearIndex = async (apiKey: string): Promise<[number, number]> =>
 	const [today, yesterday] = await Promise.all([fetchLatestIndex(apiKey), fetchYesterdayIndex(apiKey)]);
 	return [today, yesterday];
 };
+
+export type FearIndexHistoryPoint = {
+	date: string; // YYYY-MM-DD format
+	value: number;
+};
+
+export const getFearIndexHistory = async (apiKey: string, days = 30): Promise<FearIndexHistoryPoint[]> => {
+	const historicalUrl = new URL('https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical');
+	historicalUrl.searchParams.set('limit', String(days + 5)); // Get a few extra to ensure we have enough
+
+	const json = (await requestFearAndGreedApi(historicalUrl, apiKey)) as HistoricalResponse;
+	const entries = (() => {
+		if (Array.isArray(json)) {
+			return json;
+		}
+		const payload = json?.data;
+		if (Array.isArray(payload)) {
+			return payload;
+		}
+		if (payload && typeof payload === 'object') {
+			const nested = payload as {
+				data?: HistoricalEntry[];
+				values?: HistoricalEntry[];
+				points?: HistoricalEntry[];
+				quotes?: HistoricalEntry[];
+			};
+			return nested.data ?? nested.values ?? nested.points ?? nested.quotes ?? [];
+		}
+		return [];
+	})();
+
+	if (!entries.length) {
+		throw new Error('No historical fear & greed data returned by CoinMarketCap');
+	}
+
+	const normalizedEntries = entries
+		.map((entry) => {
+			const timestamp = normalizeTimestamp(entry.timestamp, [entry.time, entry.updated_at]);
+			const value = entry.value ?? entry.score ?? entry.fg_index ?? entry.value_score;
+			if (Number.isNaN(timestamp) || value === undefined) {
+				return undefined;
+			}
+			return {
+				timestamp,
+				value: parseNumericValue(value),
+				date: new Date(timestamp).toISOString().slice(0, 10),
+			};
+		})
+		.filter((entry): entry is { timestamp: number; value: number; date: string } => !!entry)
+		.sort((a, b) => a.timestamp - b.timestamp); // Sort ascending (oldest first)
+
+	if (!normalizedEntries.length) {
+		throw new Error('Unable to parse historical fear & greed data from CoinMarketCap');
+	}
+
+	// Deduplicate by date, keeping the latest value for each day
+	const uniqueByDate = new Map<string, { timestamp: number; value: number; date: string }>();
+	for (const entry of normalizedEntries) {
+		const existing = uniqueByDate.get(entry.date);
+		if (!existing || entry.timestamp > existing.timestamp) {
+			uniqueByDate.set(entry.date, entry);
+		}
+	}
+
+	// Take the last 'days' entries and return in chronological order
+	const result = Array.from(uniqueByDate.values())
+		.sort((a, b) => a.timestamp - b.timestamp)
+		.slice(-days)
+		.map((entry) => ({
+			date: entry.date,
+			value: entry.value,
+		}));
+
+	return result;
+};
