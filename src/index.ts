@@ -130,7 +130,7 @@ export default {
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 		body {
 			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			background: #0d0d1a;
 			min-height: 100vh;
 			display: flex;
 			justify-content: center;
@@ -138,37 +138,42 @@ export default {
 			padding: 20px;
 		}
 		.container {
-			background: white;
+			background: #1a1a2e;
 			border-radius: 16px;
-			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 			max-width: 900px;
 			width: 100%;
 			overflow: hidden;
 		}
 		.header {
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-			color: white;
+			background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+			color: #e0e0e0;
 			padding: 30px;
 			text-align: center;
+			border-bottom: 1px solid rgba(99, 210, 255, 0.2);
 		}
 		.header h1 {
 			font-size: 28px;
 			margin-bottom: 10px;
+			color: #63d2ff;
 		}
 		.header p {
-			opacity: 0.9;
+			opacity: 0.8;
 			font-size: 14px;
+			color: #b0b0b0;
 		}
 		.content {
 			padding: 30px;
 		}
 		.info-box {
-			background: #f8f9fa;
+			background: #16213e;
 			border-radius: 12px;
 			padding: 24px;
 			margin-bottom: 24px;
 			line-height: 1.8;
 			font-size: 16px;
+			color: #e0e0e0;
+			border: 1px solid rgba(99, 210, 255, 0.1);
 		}
 		.info-box div {
 			margin-bottom: 8px;
@@ -177,14 +182,14 @@ export default {
 			margin-bottom: 0;
 		}
 		.info-box strong {
-			color: #667eea;
+			color: #63d2ff;
 			font-weight: 600;
 		}
 		.chart-box {
 			text-align: center;
 		}
 		.chart-box h2 {
-			color: #333;
+			color: #e0e0e0;
 			margin-bottom: 20px;
 			font-size: 20px;
 		}
@@ -192,14 +197,14 @@ export default {
 			max-width: 100%;
 			height: auto;
 			border-radius: 8px;
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 		}
 		.footer {
 			text-align: center;
 			padding: 20px;
-			color: #999;
+			color: #666;
 			font-size: 12px;
-			border-top: 1px solid #eee;
+			border-top: 1px solid rgba(255, 255, 255, 0.1);
 		}
 		@media (max-width: 600px) {
 			.header h1 { font-size: 24px; }
