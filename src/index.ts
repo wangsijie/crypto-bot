@@ -1,5 +1,5 @@
 import { getFearIndex, getFearIndexHistory } from './fearIndex';
-import { sendMessage, sendPhoto } from './telegram';
+import { sendPhoto } from './telegram';
 import { generateFearGreedChartUrl } from './chart';
 
 export interface Env {
@@ -306,11 +306,8 @@ export default {
 	async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
 		try {
 			const { message, chartUrl } = await handler(env);
-			// Send both text message and chart photo
-			await Promise.all([
-				sendMessage(message, env.BOT_TOKEN, env.CHAT_ID),
-				sendPhoto(chartUrl, '近30天贪婪恐慌指数走势图', env.BOT_TOKEN, env.CHAT_ID),
-			]);
+			// Send photo with message as caption
+			await sendPhoto(chartUrl, message, env.BOT_TOKEN, env.CHAT_ID);
 			console.log('Scheduled task completed successfully');
 		} catch (error) {
 			console.error('Scheduled task error:', error);

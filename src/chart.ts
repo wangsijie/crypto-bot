@@ -18,7 +18,7 @@ export const generateFearGreedChartUrl = (history: FearIndexHistoryPoint[]): str
 	});
 	const data = history.map((point) => point.value);
 
-	// Create Chart.js configuration
+	// Create Chart.js configuration with dark mode
 	const chartConfig = {
 		type: 'line',
 		data: {
@@ -28,11 +28,11 @@ export const generateFearGreedChartUrl = (history: FearIndexHistoryPoint[]): str
 					label: '贪婪恐慌指数',
 					data,
 					fill: true,
-					backgroundColor: 'rgba(75, 192, 192, 0.2)',
-					borderColor: 'rgb(75, 192, 192)',
+					backgroundColor: 'rgba(99, 210, 255, 0.2)',
+					borderColor: 'rgb(99, 210, 255)',
 					borderWidth: 2,
 					pointRadius: 3,
-					pointBackgroundColor: 'rgb(75, 192, 192)',
+					pointBackgroundColor: 'rgb(99, 210, 255)',
 					tension: 0.3, // Smooth line
 				},
 			],
@@ -42,7 +42,7 @@ export const generateFearGreedChartUrl = (history: FearIndexHistoryPoint[]): str
 				display: true,
 				text: '近30天贪婪恐慌指数',
 				fontSize: 18,
-				fontColor: '#333',
+				fontColor: '#e0e0e0',
 			},
 			scales: {
 				yAxes: [
@@ -52,10 +52,15 @@ export const generateFearGreedChartUrl = (history: FearIndexHistoryPoint[]): str
 							min: 0,
 							max: 100,
 							stepSize: 20,
+							fontColor: '#b0b0b0',
 						},
 						scaleLabel: {
 							display: true,
 							labelString: '指数值',
+							fontColor: '#b0b0b0',
+						},
+						gridLines: {
+							color: 'rgba(255, 255, 255, 0.1)',
 						},
 					},
 				],
@@ -64,10 +69,15 @@ export const generateFearGreedChartUrl = (history: FearIndexHistoryPoint[]): str
 						scaleLabel: {
 							display: true,
 							labelString: '日期',
+							fontColor: '#b0b0b0',
 						},
 						ticks: {
 							maxRotation: 45,
 							minRotation: 45,
+							fontColor: '#b0b0b0',
+						},
+						gridLines: {
+							color: 'rgba(255, 255, 255, 0.1)',
 						},
 					},
 				],
@@ -75,6 +85,9 @@ export const generateFearGreedChartUrl = (history: FearIndexHistoryPoint[]): str
 			legend: {
 				display: true,
 				position: 'top',
+				labels: {
+					fontColor: '#e0e0e0',
+				},
 			},
 			plugins: {
 				// Add reference lines for fear/greed zones
@@ -133,7 +146,7 @@ export const generateFearGreedChartUrl = (history: FearIndexHistoryPoint[]): str
 
 	// QuickChart.io URL with configuration
 	// Using width=800, height=400 for good mobile/desktop viewing
-	const chartUrl = `https://quickchart.io/chart?c=${encodedConfig}&width=800&height=400&backgroundColor=white`;
+	const chartUrl = `https://quickchart.io/chart?c=${encodedConfig}&width=800&height=400&backgroundColor=%231a1a2e`;
 
 	return chartUrl;
 };
