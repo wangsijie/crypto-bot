@@ -119,6 +119,14 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 	]);
 	const action = getRecommendedAction(score);
 
+	// Ensure today's data is included in the chart
+	const today = new Date().toISOString().slice(0, 10);
+	const hasToday = fearIndexHistory.some(point => point.date === today);
+
+	const historyWithToday = hasToday
+		? fearIndexHistory
+		: [...fearIndexHistory.slice(-(30 - 1)), { date: today, value: score }];
+
 	const message = [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
@@ -129,7 +137,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 	].join('\n');
 
-	const chartUrl = generateFearGreedChartUrl(fearIndexHistory);
+	const chartUrl = generateFearGreedChartUrl(historyWithToday);
 
 	return { message, chartUrl };
 };
