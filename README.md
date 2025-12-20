@@ -19,12 +19,23 @@ npm install
 
 2. Configure environment variables:
    - Copy `.dev.vars.example` to `.dev.vars` for local development
-   - For production, set secrets using:
-```bash
-wrangler secret put BOT_TOKEN
-wrangler secret put CHAT_ID
-wrangler secret put CMC_API_KEY
-```
+   - For production, choose one of these methods:
+
+   **Option A: Using Cloudflare Dashboard (Recommended)**
+   - Go to Workers & Pages > [your-worker] > Settings > Variables and Secrets
+   - **IMPORTANT**: Add variables in the "Environment Variables" section (for runtime)
+   - Do NOT add them as "Build variables" (build-time only)
+   - Add these three variables:
+     - `BOT_TOKEN`: Your Telegram bot token
+     - `CHAT_ID`: Your Telegram chat ID
+     - `CMC_API_KEY`: Your CoinMarketCap API key
+
+   **Option B: Using wrangler CLI**
+   ```bash
+   wrangler secret put BOT_TOKEN
+   wrangler secret put CHAT_ID
+   wrangler secret put CMC_API_KEY
+   ```
 
 3. Local development:
 ```bash

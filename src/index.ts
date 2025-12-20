@@ -8,6 +8,16 @@ export interface Env {
 }
 
 const handler = async (env: Env) => {
+	// Debug: Log environment variable status
+	console.log('[DEBUG] Environment variables check:', {
+		hasBotToken: !!env.BOT_TOKEN,
+		hasChatId: !!env.CHAT_ID,
+		hasCmcApiKey: !!env.CMC_API_KEY,
+		cmcApiKeyType: typeof env.CMC_API_KEY,
+		cmcApiKeyLength: env.CMC_API_KEY?.length,
+		envKeys: Object.keys(env),
+	});
+
 	const getCoinPrice = async (coin: string): Promise<number> => {
 		type DataPayload = {
 			last: string;

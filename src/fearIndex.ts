@@ -72,8 +72,20 @@ const normalizeTimestamp = (
 
 const requestFearAndGreedApi = async (input: string | URL, apiKey: string): Promise<unknown> => {
 	// Validate API key is provided
+	console.log('[DEBUG] API Key check:', {
+		isDefined: apiKey !== undefined,
+		isNull: apiKey === null,
+		type: typeof apiKey,
+		length: apiKey?.length,
+		isEmpty: apiKey === '',
+		trimmedEmpty: apiKey?.trim() === '',
+		firstChars: apiKey?.substring(0, 8) + '...',
+	});
+
 	if (!apiKey || apiKey.trim() === '') {
-		throw new Error('CoinMarketCap API key (CMC_API_KEY) is not configured');
+		throw new Error(
+			`CoinMarketCap API key (CMC_API_KEY) is not configured. Received: ${typeof apiKey} ${apiKey === undefined ? 'undefined' : apiKey === null ? 'null' : `"${apiKey}"`}`
+		);
 	}
 
 	const response = await fetch(input, {

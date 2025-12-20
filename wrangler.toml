@@ -7,7 +7,20 @@ compatibility_date = "2024-01-01"
 [triggers]
 crons = ["30 0,2,4,6,8,10,12,14 * * *"]
 
-# Environment variables (set via wrangler secret put)
-# BOT_TOKEN
-# CHAT_ID
-# CMC_API_KEY
+# Environment variables
+# IMPORTANT: These must be set as RUNTIME variables, NOT build variables!
+#
+# In Cloudflare Dashboard:
+# Workers & Pages > [your-worker] > Settings > Variables and Secrets
+# Make sure to add them in the "Environment Variables" section for runtime,
+# NOT in "Build variables" (which are only available during build).
+#
+# Or using the wrangler CLI:
+# wrangler secret put BOT_TOKEN
+# wrangler secret put CHAT_ID
+# wrangler secret put CMC_API_KEY
+#
+# Required runtime variables:
+# - BOT_TOKEN: Your Telegram bot token
+# - CHAT_ID: Your Telegram chat ID
+# - CMC_API_KEY: Your CoinMarketCap API key
