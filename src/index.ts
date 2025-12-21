@@ -6,9 +6,21 @@ export interface Env {
 	BOT_TOKEN: string;
 	CHAT_ID: string;
 	CMC_API_KEY: string;
+	OKX_PROXY_URL: string; // e.g., https://your-vps.com/okx
+	OKX_PROXY_AUTH: string; // e.g., username:password
 }
 
 const handler = async (env: Env): Promise<{ message: string; chartUrl: string }> => {
+	// Helper to fetch via proxy
+	const fetchOkx = async (path: string): Promise<Response> => {
+		const url = `${env.OKX_PROXY_URL}${path}`;
+		const headers: Record<string, string> = {};
+		if (env.OKX_PROXY_AUTH) {
+			headers['Authorization'] = 'Basic ' + btoa(env.OKX_PROXY_AUTH);
+		}
+		return fetch(url, { headers });
+	};
+
 	const getCoinPrice = async (coin: string): Promise<number> => {
 		type DataPayload = {
 			last: string;
@@ -18,8 +30,8 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 			data: DataPayload;
 		};
 
-		const response = await fetch(
-			`https://www.okx.com/api/v5/market/index-components?index=${coin}-USDT`
+		const response = await fetchOkx(
+			`/api/v5/market/index-components?index=${coin}-USDT`
 		);
 
 		if (!response.ok) {
@@ -36,8 +48,8 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 	};
 
 	const getIndexTicker = async (instId: string): Promise<number> => {
-		const response = await fetch(
-			`https://www.okx.com/api/v5/market/index-tickers?instId=${instId}`
+		const response = await fetchOkx(
+			`/api/v5/market/index-tickers?instId=${instId}`
 		);
 
 		if (!response.ok) {
@@ -66,8 +78,8 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 
 	const getBtcPriceHistory = async (days = 30): Promise<BtcPriceHistoryPoint[]> => {
 		// OKX candlestick API: returns [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
-		const response = await fetch(
-			`https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=1D&limit=${days + 1}`
+		const response = await fetchOkx(
+			`/api/v5/market/candles?instId=BTC-USDT&bar=1D&limit=${days + 1}`
 		);
 
 		if (!response.ok) {
