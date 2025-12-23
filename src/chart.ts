@@ -109,10 +109,10 @@ export const generateFearGreedChartUrl = (
 			title: {
 				display: true,
 				text: btcPriceData && btcGoldData
-					? '近30天贪婪恐慌指数 & BTC价格 & BTC/Gold'
+					? '近90天贪婪恐慌指数 & BTC价格 & BTC/Gold'
 					: btcPriceData
-					? '近30天贪婪恐慌指数 & BTC价格'
-					: '近30天贪婪恐慌指数',
+					? '近90天贪婪恐慌指数 & BTC价格'
+					: '近90天贪婪恐慌指数',
 				fontSize: 18,
 				fontColor: '#e0e0e0',
 			},

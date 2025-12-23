@@ -212,9 +212,9 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		getCoinPrice('ETH'),
 		getCoinPrice('DOGE'),
 		getIndexTicker('ETH-BTC'),
-		getFearIndexHistory(env.CMC_API_KEY, 30),
-		getBtcPriceHistory(30),
-		getGoldPriceHistory(30),
+		getFearIndexHistory(env.CMC_API_KEY, 90),
+		getBtcPriceHistory(90),
+		getGoldPriceHistory(90),
 	]);
 
 	// Calculate BTC/Gold ratio
@@ -227,13 +227,13 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 
 	const historyWithToday = hasToday
 		? fearIndexHistory
-		: [...fearIndexHistory.slice(-(30 - 1)), { date: today, value: score }];
+		: [...fearIndexHistory.slice(-(90 - 1)), { date: today, value: score }];
 
 	// Ensure today's BTC price is included
 	const hasTodayBtc = btcPriceHistory.some(point => point.date === today);
 	const btcHistoryWithToday = hasTodayBtc
 		? btcPriceHistory
-		: [...btcPriceHistory.slice(-(30 - 1)), { date: today, price: btcPrice }];
+		: [...btcPriceHistory.slice(-(90 - 1)), { date: today, price: btcPrice }];
 
 	// Get current gold price for display
 	const currentGoldPrice = goldPriceHistory[goldPriceHistory.length - 1]?.price;
@@ -363,7 +363,7 @@ export default {
 				${message.split('\n').map(line => `<div>${line}</div>`).join('')}
 			</div>
 			<div class="chart-box">
-				<h2>近30天贪婪恐慌指数走势</h2>
+				<h2>近90天贪婪恐慌指数走势</h2>
 				<img src="${chartUrl}" alt="Fear & Greed Index Chart">
 			</div>
 		</div>
