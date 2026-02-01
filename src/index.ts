@@ -10,7 +10,21 @@ export interface Env {
 	OKX_PROXY_AUTH: string; // e.g., username:password
 }
 
-const handler = async (env: Env): Promise<{ message: string; chartUrl: string }> => {
+type NewsItem = {
+	id: string;
+	title: string;
+	url: string;
+	body: string;
+	source: string;
+    tags: string;
+    published_on: number;
+    source_info: {
+        name: string;
+        img: string;
+    }
+};
+
+const handler = async (env: Env): Promise<{ message: string; chartUrl: string; news: NewsItem[] }> => {
 	// Helper to fetch via proxy
 	const fetchOkx = async (path: string): Promise<Response> => {
 		const url = `${env.OKX_PROXY_URL}${path}`;
@@ -196,6 +210,21 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		return '卖出一份(冷静1天)';
 	};
 
+	const getLatestNews = async (): Promise<NewsItem[]> => {
+		try {
+			const response = await fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN');
+			if (!response.ok) {
+				console.error('Failed to fetch news');
+				return [];
+			}
+			const json = (await response.json()) as { Data: NewsItem[] };
+			return json.Data.slice(0, 5);
+		} catch (e) {
+			console.error('Error fetching news:', e);
+			return [];
+		}
+	};
+
 	// Fetch all data in parallel
 	const [
 		[score, yesterdayScore],
@@ -206,6 +235,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		fearIndexHistory,
 		btcPriceHistory,
 		goldPriceHistory,
+		news,
 	] = await Promise.all([
 		getFearIndex(env.CMC_API_KEY),
 		getCoinPrice('BTC'),
@@ -215,6 +245,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		getFearIndexHistory(env.CMC_API_KEY, 90),
 		getBtcPriceHistory(90),
 		getGoldPriceHistory(90),
+		getLatestNews(),
 	]);
 
 	// Calculate BTC/Gold ratio
@@ -239,6 +270,10 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 	const currentGoldPrice = goldPriceHistory[goldPriceHistory.length - 1]?.price;
 	const currentBtcGoldRatio = currentGoldPrice ? (btcPrice / currentGoldPrice).toFixed(2) : 'N/A';
 
+	const newsSection = news.length > 0
+		? '\n\n📰 最新新闻:\n' + news.map(n => `• [${n.source}] ${n.title}`).join('\n')
+		: '';
+
 	const message = [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
@@ -247,17 +282,18 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`DOGE: ${dogePrice.toFixed(4)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 		`BTC/Gold: ${currentBtcGoldRatio}`,
+		newsSection,
 	].join('\n');
 
 	const chartUrl = generateFearGreedChartUrl(historyWithToday, btcHistoryWithToday, btcGoldRatioHistory);
 
-	return { message, chartUrl };
+	return { message, chartUrl, news };
 };
 
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		try {
-			const { message, chartUrl } = await handler(env);
+			const { message, chartUrl, news } = await handler(env);
 			// HTTP trigger: return HTML page
 			const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -362,6 +398,16 @@ export default {
 			<div class="info-box">
 				${message.split('\n').map(line => `<div>${line}</div>`).join('')}
 			</div>
+			${news && news.length > 0 ? `
+			<div class="info-box">
+				<div style="font-size: 18px; margin-bottom: 16px; color: #63d2ff; font-weight: bold;">📰 最新新闻</div>
+				${news.map(n => `
+					<div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+						<a href="${n.url}" target="_blank" style="color: #e0e0e0; text-decoration: none; font-weight: 500; display: block; margin-bottom: 4px; font-size: 15px;">${n.title}</a>
+						<div style="font-size: 12px; color: #888;">${n.source_info.name || n.source} • ${new Date(n.published_on * 1000).toLocaleDateString()}</div>
+					</div>
+				`).join('')}
+			</div>` : ''}
 			<div class="chart-box">
 				<h2>近90天贪婪恐慌指数走势</h2>
 				<img src="${chartUrl}" alt="Fear & Greed Index Chart">
