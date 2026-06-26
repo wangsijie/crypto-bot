@@ -280,7 +280,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`BTC: ${Math.floor(btcPrice)}`,
 		`推荐操作: ${action}`,
 		`ETH: ${Math.floor(ethPrice)}`,
-		`200周MA: ${Math.round(btc200WeekMa)}`,
+		`200周MA: ${Math.round(btc200WeekMa)} (${(btcPrice / btc200WeekMa).toFixed(2)})`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 		`BTC/Gold: ${currentBtcGoldRatio}`,
 	].join('\n');
