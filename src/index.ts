@@ -76,6 +76,44 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		price: number;
 	};
 
+	const getBtc200WeekMa = async (): Promise<number> => {
+		const weeksNeeded = 200;
+		const closes: number[] = [];
+		let after: string | undefined;
+
+		while (closes.length < weeksNeeded) {
+			const limit = Math.min(100, weeksNeeded - closes.length);
+			const pagination = after ? `&after=${after}` : '';
+			const useHistoryEndpoint = closes.length > 0;
+			const endpoint = useHistoryEndpoint ? 'history-candles' : 'candles';
+			const response = await fetchOkx(
+				`/api/v5/market/${endpoint}?instId=BTC-USDT&bar=1W&limit=${limit}${pagination}`
+			);
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch BTC weekly candles for 200-week MA');
+			}
+
+			const json = (await response.json()) as {
+				data: Array<[string, string, string, string, string, string, string, string, string]>;
+			};
+
+			if (!json.data?.length) {
+				break;
+			}
+
+			closes.push(...json.data.map((candle) => Number(candle[4])));
+			after = json.data[json.data.length - 1][0];
+		}
+
+		if (closes.length < weeksNeeded) {
+			throw new Error(`Insufficient BTC weekly data for 200-week MA (${closes.length}/${weeksNeeded})`);
+		}
+
+		const sum = closes.slice(0, weeksNeeded).reduce((total, price) => total + price, 0);
+		return sum / weeksNeeded;
+	};
+
 	const getBtcPriceHistory = async (days = 30): Promise<BtcPriceHistoryPoint[]> => {
 		// OKX candlestick API: returns [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
 		const response = await fetchOkx(
@@ -201,7 +239,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		[score, yesterdayScore],
 		btcPrice,
 		ethPrice,
-		dogePrice,
+		btc200WeekMa,
 		ethToBtcIndexPrice,
 		fearIndexHistory,
 		btcPriceHistory,
@@ -210,7 +248,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		getFearIndex(env.CMC_API_KEY),
 		getCoinPrice('BTC'),
 		getCoinPrice('ETH'),
-		getCoinPrice('DOGE'),
+		getBtc200WeekMa(),
 		getIndexTicker('ETH-BTC'),
 		getFearIndexHistory(env.CMC_API_KEY, 90),
 		getBtcPriceHistory(90),
@@ -244,7 +282,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`BTC: ${Math.floor(btcPrice)}`,
 		`推荐操作: ${action}`,
 		`ETH: ${Math.floor(ethPrice)}`,
-		`DOGE: ${dogePrice.toFixed(4)}`,
+		`200周MA: ${Math.floor(btc200WeekMa)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 		`BTC/Gold: ${currentBtcGoldRatio}`,
 	].join('\n');

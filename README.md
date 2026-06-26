@@ -4,7 +4,7 @@ A Cloudflare Workers application that monitors cryptocurrency prices and market 
 
 ## Features
 
-- Monitors BTC, ETH, and DOGE prices
+- Monitors BTC, ETH prices and BTC 200-week moving average
 - Tracks Fear & Greed Index from CoinMarketCap
 - Calculates funding rates
 - Provides trading recommendations
