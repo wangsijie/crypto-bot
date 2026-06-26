@@ -77,26 +77,25 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 	};
 
 	const getBtc200WeekMa = async (): Promise<number> => {
-		const weeksNeeded = 200;
+		const weeks = 200;
 		const closes: number[] = [];
 		let after: string | undefined;
 
-		while (closes.length < weeksNeeded) {
-			const limit = Math.min(100, weeksNeeded - closes.length);
-			const pagination = after ? `&after=${after}` : '';
-			const useHistoryEndpoint = closes.length > 0;
-			const endpoint = useHistoryEndpoint ? 'history-candles' : 'candles';
+		type Candle = [string, string, string, string, string, string, string, string, string];
+
+		while (closes.length < weeks) {
+			const limit = Math.min(100, weeks - closes.length);
+			const endpoint = closes.length > 0 ? 'history-candles' : 'candles';
+			const afterParam = after ? `&after=${after}` : '';
 			const response = await fetchOkx(
-				`/api/v5/market/${endpoint}?instId=BTC-USDT&bar=1W&limit=${limit}${pagination}`
+				`/api/v5/market/${endpoint}?instId=BTC-USDT&bar=1W&limit=${limit}${afterParam}`
 			);
 
 			if (!response.ok) {
 				throw new Error('Failed to fetch BTC weekly candles for 200-week MA');
 			}
 
-			const json = (await response.json()) as {
-				data: Array<[string, string, string, string, string, string, string, string, string]>;
-			};
+			const json = (await response.json()) as { data: Candle[] };
 
 			if (!json.data?.length) {
 				break;
@@ -106,12 +105,11 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 			after = json.data[json.data.length - 1][0];
 		}
 
-		if (closes.length < weeksNeeded) {
-			throw new Error(`Insufficient BTC weekly data for 200-week MA (${closes.length}/${weeksNeeded})`);
+		if (closes.length < weeks) {
+			throw new Error(`Insufficient BTC weekly data for 200-week MA (${closes.length}/${weeks})`);
 		}
 
-		const sum = closes.slice(0, weeksNeeded).reduce((total, price) => total + price, 0);
-		return sum / weeksNeeded;
+		return closes.reduce((total, price) => total + price, 0) / weeks;
 	};
 
 	const getBtcPriceHistory = async (days = 30): Promise<BtcPriceHistoryPoint[]> => {
@@ -282,7 +280,7 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`BTC: ${Math.floor(btcPrice)}`,
 		`推荐操作: ${action}`,
 		`ETH: ${Math.floor(ethPrice)}`,
-		`200周MA: ${Math.floor(btc200WeekMa)}`,
+		`200周MA: ${Math.round(btc200WeekMa)}`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 		`BTC/Gold: ${currentBtcGoldRatio}`,
 	].join('\n');
