@@ -143,79 +143,6 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		return history;
 	};
 
-	type GoldPriceHistoryPoint = {
-		date: string;
-		price: number;
-	};
-
-	const getGoldPriceHistory = async (days = 30): Promise<GoldPriceHistoryPoint[]> => {
-		// Use PAXG (Paxos Gold) as a proxy for gold price (1 PAXG ≈ 1 oz gold)
-		const response = await fetchOkx(
-			`/api/v5/market/candles?instId=PAXG-USDT&bar=1D&limit=${days + 1}`
-		);
-
-		if (!response.ok) {
-			throw new Error('Failed to fetch Gold (PAXG) price history');
-		}
-
-		const json = (await response.json()) as {
-			data: Array<[string, string, string, string, string, string, string, string, string]>;
-		};
-
-		if (!json.data || !json.data.length) {
-			throw new Error('No Gold (PAXG) price history data returned');
-		}
-
-		const history = json.data
-			.map((candle) => {
-				const timestamp = Number(candle[0]);
-				const closePrice = Number(candle[4]);
-				const date = new Date(timestamp).toISOString().slice(0, 10);
-				return { date, price: closePrice };
-			})
-			.reverse();
-
-		return history;
-	};
-
-	type BtcGoldRatioPoint = {
-		date: string;
-		ratio: number;
-		normalizedRatio: number; // 0-100 scale
-	};
-
-	const calculateBtcGoldRatio = (
-		btcHistory: BtcPriceHistoryPoint[],
-		goldHistory: GoldPriceHistoryPoint[]
-	): BtcGoldRatioPoint[] => {
-		// Create a map of gold prices by date
-		const goldByDate = new Map(goldHistory.map((p) => [p.date, p.price]));
-
-		// Calculate ratio for each BTC data point
-		const ratios = btcHistory
-			.map((btc) => {
-				const goldPrice = goldByDate.get(btc.date);
-				if (!goldPrice) return null;
-				return {
-					date: btc.date,
-					ratio: btc.price / goldPrice,
-				};
-			})
-			.filter((r): r is { date: string; ratio: number } => r !== null);
-
-		if (!ratios.length) return [];
-
-		// Normalize to 0-100 scale based on min/max of the period
-		const minRatio = Math.min(...ratios.map((r) => r.ratio));
-		const maxRatio = Math.max(...ratios.map((r) => r.ratio));
-		const range = maxRatio - minRatio || 1; // Avoid division by zero
-
-		return ratios.map((r) => ({
-			...r,
-			normalizedRatio: ((r.ratio - minRatio) / range) * 100,
-		}));
-	};
-
 	const getRecommendedAction = (fearIndex: number): string => {
 		if (fearIndex < 25) {
 			return '买入一份(冷静1天)';
@@ -241,7 +168,6 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		ethToBtcIndexPrice,
 		fearIndexHistory,
 		btcPriceHistory,
-		goldPriceHistory,
 	] = await Promise.all([
 		getFearIndex(env.CMC_API_KEY),
 		getCoinPrice('BTC'),
@@ -250,11 +176,8 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		getIndexTicker('ETH-BTC'),
 		getFearIndexHistory(env.CMC_API_KEY, 90),
 		getBtcPriceHistory(90),
-		getGoldPriceHistory(90),
 	]);
 
-	// Calculate BTC/Gold ratio
-	const btcGoldRatioHistory = calculateBtcGoldRatio(btcPriceHistory, goldPriceHistory);
 	const action = getRecommendedAction(score);
 
 	// Ensure today's data is included in the chart
@@ -271,10 +194,6 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		? btcPriceHistory
 		: [...btcPriceHistory.slice(-(90 - 1)), { date: today, price: btcPrice }];
 
-	// Get current gold price for display
-	const currentGoldPrice = goldPriceHistory[goldPriceHistory.length - 1]?.price;
-	const currentBtcGoldRatio = currentGoldPrice ? (btcPrice / currentGoldPrice).toFixed(2) : 'N/A';
-
 	const message = [
 		`贪婪指数: ${Math.floor(score)}（昨日: ${Math.floor(yesterdayScore)}）`,
 		`BTC: ${Math.floor(btcPrice)}`,
@@ -282,10 +201,9 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`ETH: ${Math.floor(ethPrice)}`,
 		`200周MA: ${Math.round(btc200WeekMa)} (${(btcPrice / btc200WeekMa).toFixed(2)})`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
-		`BTC/Gold: ${currentBtcGoldRatio}`,
 	].join('\n');
 
-	const chartUrl = generateFearGreedChartUrl(historyWithToday, btcHistoryWithToday, btcGoldRatioHistory);
+	const chartUrl = generateFearGreedChartUrl(historyWithToday, btcHistoryWithToday);
 
 	return { message, chartUrl };
 };
