@@ -76,40 +76,50 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		price: number;
 	};
 
-	const getBtc200WeekMa = async (): Promise<number> => {
+	type Btc200WeekMaData = {
+		value: number;
+		history: Array<{ date: string; value: number }>;
+	};
+
+	const getBtc200WeekMa = async (historyDays = 90): Promise<Btc200WeekMaData> => {
 		const weeks = 200;
-		const closes: number[] = [];
-		let after: string | undefined;
-
 		type Candle = [string, string, string, string, string, string, string, string, string];
+		const historyWeeks = Math.ceil(historyDays / 7) + 1;
+		const response = await fetchOkx(
+			`/api/v5/market/candles?instId=BTC-USDT&bar=1W&limit=${weeks + historyWeeks}`
+		);
 
-		while (closes.length < weeks) {
-			const limit = Math.min(100, weeks - closes.length);
-			const endpoint = closes.length > 0 ? 'history-candles' : 'candles';
-			const afterParam = after ? `&after=${after}` : '';
-			const response = await fetchOkx(
-				`/api/v5/market/${endpoint}?instId=BTC-USDT&bar=1W&limit=${limit}${afterParam}`
-			);
-
-			if (!response.ok) {
-				throw new Error('Failed to fetch BTC weekly candles for 200-week MA');
-			}
-
-			const json = (await response.json()) as { data: Candle[] };
-
-			if (!json.data?.length) {
-				break;
-			}
-
-			closes.push(...json.data.map((candle) => Number(candle[4])));
-			after = json.data[json.data.length - 1][0];
+		if (!response.ok) {
+			throw new Error('Failed to fetch BTC weekly candles for 200-week MA');
 		}
 
-		if (closes.length < weeks) {
-			throw new Error(`Insufficient BTC weekly data for 200-week MA (${closes.length}/${weeks})`);
+		const json = (await response.json()) as { data: Candle[] };
+		const candles = json.data ?? [];
+
+		if (candles.length < weeks) {
+			throw new Error(`Insufficient BTC weekly data for 200-week MA (${candles.length}/${weeks})`);
 		}
 
-		return closes.reduce((total, price) => total + price, 0) / weeks;
+		const closes = candles.map((candle) => Number(candle[4]));
+		const rollingValues = candles.slice(0, candles.length - weeks + 1).flatMap((candle, index) => {
+			if (candle[8] !== '1') {
+				return [];
+			}
+
+			const value = closes
+				.slice(index, index + weeks)
+				.reduce((total, price) => total + price, 0) / weeks;
+			const weekEnd = Number(candle[0]) + 7 * 24 * 60 * 60 * 1000;
+
+			return [{ date: new Date(weekEnd).toISOString().slice(0, 10), value }];
+		});
+		const value = closes.slice(0, weeks).reduce((total, price) => total + price, 0) / weeks;
+		const today = new Date().toISOString().slice(0, 10);
+		const history = [...rollingValues, { date: today, value }]
+			.sort((a, b) => a.date.localeCompare(b.date))
+			.filter((point, index, points) => point.date !== points[index + 1]?.date);
+
+		return { value, history };
 	};
 
 	const getBtcPriceHistory = async (days = 30): Promise<BtcPriceHistoryPoint[]> => {
@@ -199,11 +209,15 @@ const handler = async (env: Env): Promise<{ message: string; chartUrl: string }>
 		`BTC: ${Math.floor(btcPrice)}`,
 		`推荐操作: ${action}`,
 		`ETH: ${Math.floor(ethPrice)}`,
-		`200周MA: ${Math.round(btc200WeekMa)} (${(btcPrice / btc200WeekMa).toFixed(2)})`,
+		`200周MA: ${Math.round(btc200WeekMa.value)} (${(btcPrice / btc200WeekMa.value).toFixed(2)})`,
 		`ETH/BTC: ${ethToBtcIndexPrice}`,
 	].join('\n');
 
-	const chartUrl = generateFearGreedChartUrl(historyWithToday, btcHistoryWithToday);
+	const chartUrl = generateFearGreedChartUrl(
+		historyWithToday,
+		btcHistoryWithToday,
+		btc200WeekMa.history
+	);
 
 	return { message, chartUrl };
 };

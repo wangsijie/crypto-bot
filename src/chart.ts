@@ -5,15 +5,22 @@ export type BtcPriceHistoryPoint = {
 	price: number;
 };
 
+export type BtcMovingAverageHistoryPoint = {
+	date: string;
+	value: number;
+};
+
 /**
  * Generate a chart URL for Fear & Greed Index history using QuickChart.io
  * @param history Array of historical fear & greed index data points
  * @param btcPriceHistory Optional array of BTC price history data points
+ * @param btc200WeekMaHistory Optional array of BTC 200-week moving average data points
  * @returns URL to the generated chart image
  */
 export const generateFearGreedChartUrl = (
 	history: FearIndexHistoryPoint[],
-	btcPriceHistory?: BtcPriceHistoryPoint[]
+	btcPriceHistory?: BtcPriceHistoryPoint[],
+	btc200WeekMaHistory?: BtcMovingAverageHistoryPoint[]
 ): string => {
 	if (!history.length) {
 		throw new Error('No history data provided for chart generation');
@@ -32,6 +39,14 @@ export const generateFearGreedChartUrl = (
 		? history.map((point) => {
 				const btcPoint = btcPriceHistory.find((bp) => bp.date === point.date);
 				return btcPoint ? btcPoint.price : null;
+		  })
+		: null;
+	const btc200WeekMaData = btc200WeekMaHistory?.length
+		? history.map((point) => {
+				const latestPoint = btc200WeekMaHistory
+					.filter((maPoint) => maPoint.date <= point.date)
+					.at(-1);
+				return latestPoint?.value ?? null;
 		  })
 		: null;
 
@@ -66,6 +81,20 @@ export const generateFearGreedChartUrl = (
 		});
 	}
 
+	if (btc200WeekMaData) {
+		datasets.push({
+			label: 'BTC 200周 MA',
+			data: btc200WeekMaData,
+			fill: false,
+			borderColor: 'rgb(167, 243, 208)',
+			borderWidth: 2,
+			borderDash: [6, 4],
+			pointRadius: 0,
+			tension: 0,
+			yAxisID: 'y-axis-1',
+		});
+	}
+
 	// Create Chart.js configuration with dark mode
 	const chartConfig = {
 		type: 'line',
@@ -76,7 +105,9 @@ export const generateFearGreedChartUrl = (
 		options: {
 			title: {
 				display: true,
-				text: btcPriceData ? '近90天贪婪恐慌指数 & BTC价格' : '近90天贪婪恐慌指数',
+				text: btcPriceData
+					? '近90天贪婪恐慌指数、BTC价格 & 200周MA'
+					: '近90天贪婪恐慌指数',
 				fontSize: 18,
 				fontColor: '#e0e0e0',
 			},
@@ -101,7 +132,7 @@ export const generateFearGreedChartUrl = (
 							color: 'rgba(255, 255, 255, 0.1)',
 						},
 					},
-					...(btcPriceData
+					...(btcPriceData || btc200WeekMaData
 						? [
 								{
 									id: 'y-axis-1',
